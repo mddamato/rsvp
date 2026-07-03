@@ -19,6 +19,14 @@
   <button type="submit" data-once>Upload</button>
 </form>
 
+<form method="post" action="/admin/add-invitee" class="upload-row">
+  <label for="primary_name">Add a single guest</label>
+  <input type="text" id="primary_name" name="primary_name" placeholder="Name" required>
+  <input type="email" id="email" name="email" placeholder="Email (optional)">
+  <input type="number" id="max_guests" name="max_guests" placeholder="Max guests" min="0" value="0">
+  <button type="submit" data-once>Add</button>
+</form>
+
 <table class="guest-table">
   <thead>
     <tr><th>Guest</th><th>Status</th><th>Guests</th><th>Notes</th><th>Card</th></tr>

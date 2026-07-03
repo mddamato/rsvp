@@ -90,6 +90,25 @@ def upload_csv():
     return redirect(url_for("admin.dashboard"))
 
 
+@bp.post("/add-invitee")
+@auth.login_required
+def add_invitee():
+    name = (request.form.get("primary_name") or "").strip()
+    if not name:
+        flash("Name is required.")
+        return redirect(url_for("admin.dashboard"))
+
+    email = (request.form.get("email") or "").strip()
+    try:
+        max_guests = int((request.form.get("max_guests") or "0").strip() or 0)
+    except ValueError:
+        max_guests = 0
+
+    phrases.insert_with_unique_phrase(db.insert_invitee, name, email, max_guests)
+    flash(f"Added {name}.")
+    return redirect(url_for("admin.dashboard"))
+
+
 @bp.get("/card/<invitee_id>")
 @auth.login_required
 def card_view(invitee_id):
