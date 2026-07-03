@@ -15,6 +15,7 @@
       {% block details %}{% if config.EVENT_DETAILS %}<p class="event-details">{{ config.EVENT_DETAILS }}</p>{% endif %}{% endblock %}
     </header>
     {% block content %}{% endblock %}
+    {% block closing %}{% if config.EVENT_CLOSING %}<p class="event-closing">{{ config.EVENT_CLOSING }}</p>{% endif %}{% endblock %}
   </main>
   <script src="{{ url_for('static', filename='enhance.js') }}" defer></script>
 </body>

@@ -146,6 +146,14 @@ a { color: var(--color-accent); }
   margin-top: calc(var(--space) * 1.5);
 }
 
+.event-closing {
+  text-align: center;
+  font-style: italic;
+  font-size: 0.9rem;
+  color: var(--color-muted);
+  margin-top: calc(var(--space) * 1.5);
+}
+
 /* RSVP choice radios rendered as tappable pills */
 .choice-row { border: none; padding: 0; margin: 0; display: flex; gap: 0.5rem; }
 .choice-row legend { font-size: 0.9rem; color: var(--color-muted); margin-bottom: 0.4rem; }

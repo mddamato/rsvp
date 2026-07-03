@@ -17,12 +17,14 @@ tests/           pytest suite (run: python3 -m pytest tests/)
 
 ## Event text
 
-`EVENT_TITLE`, `EVENT_SUBHEADING`, and `EVENT_DETAILS` in `config/.env`
-control the text guests see at the top of every page: the main title,
-an optional line underneath for date/time, and an optional paragraph
-below that for longer instructions (parking, directions, dress code,
-etc). Only `EVENT_TITLE` has a default ("Our Celebration"); the other
-two are hidden if left unset. Admin pages don't show any of this.
+`EVENT_TITLE`, `EVENT_SUBHEADING`, `EVENT_DETAILS`, and `EVENT_CLOSING`
+in `config/.env` control the guest-facing text: the main title, an
+optional line underneath for date/time, an optional paragraph below
+that for longer instructions (parking, directions, dress code, etc),
+and an optional closing signature (e.g. "- The Smith Family") rendered
+near the bottom of the page, below the form. Only `EVENT_TITLE` has a
+default ("Our Celebration"); the rest are hidden if left unset. Admin
+pages don't show any of this.
 
 ## Theming
 
