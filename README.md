@@ -27,8 +27,10 @@ Preset variable blocks for common party themes are in
 the top of `style.css` to apply it:
 
 - `kids-party.css` — bright, playful, rounded corners
+- `boy-toddler.css` — bold red & blue accents, blocky heading font
 - `wedding.css` — black & white, script heading, serif body
-- `holiday-party.css` — festive red/green/gold on warm cream
+- `holiday-party.css` — softer, muted festive red/green/gold on warm cream
+- `christmas.css` — classic red/green/gold on snow white
 
 ## Local development
 
