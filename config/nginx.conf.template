@@ -3,7 +3,7 @@
 # ($host, $request_uri, $binary_remote_addr) are left untouched because
 # the image only substitutes variables that exist in the environment.
 
-limit_req_zone $binary_remote_addr zone=rsvp_limit:10m rate=5r/m;
+limit_req_zone $binary_remote_addr zone=rsvp_limit:10m rate=20r/m;
 
 server {
     listen 80;
@@ -30,11 +30,13 @@ server {
     gzip on;
     gzip_types text/html text/css application/javascript;
 
-    # Brute-force defense on the two guessable endpoints.
-    # burst=5 nodelay lets a real guest's first attempts through
-    # instantly, then returns 429 until the rate window recovers.
+    # Brute-force defense on the two guessable endpoints. Keyed on
+    # source IP, so guests sharing one IP (same household/office NAT)
+    # share this budget too. burst=10 nodelay lets real guests' first
+    # attempts through instantly, then returns 429 until the window
+    # recovers.
     location = / {
-        limit_req zone=rsvp_limit burst=5 nodelay;
+        limit_req zone=rsvp_limit burst=10 nodelay;
         proxy_pass http://python_app:8000;
         proxy_set_header Host $host;
         proxy_set_header X-Forwarded-For $remote_addr;
@@ -42,7 +44,7 @@ server {
     }
 
     location = /recover {
-        limit_req zone=rsvp_limit burst=5 nodelay;
+        limit_req zone=rsvp_limit burst=10 nodelay;
         proxy_pass http://python_app:8000;
         proxy_set_header Host $host;
         proxy_set_header X-Forwarded-For $remote_addr;

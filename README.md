@@ -77,8 +77,8 @@ with collision retry. Print cards from the per-guest "View card" link.
 
 - The QR link is a bearer token by design: anyone with the link can
   RSVP for that household. Accepted tradeoff for this use case.
-- Rate limiting (5 req/min, burst 5) applies to phrase lookup and email
-  recovery at the Nginx layer.
+- Rate limiting (20 req/min, burst 10) applies to phrase lookup and
+  email recovery at the Nginx layer, keyed per source IP.
 - Backups expire from S3 after 30 days (lifecycle rule in infra).
 - bcrypt is pinned to 4.0.1: passlib 1.7.4 is incompatible with
   bcrypt >= 4.1.
