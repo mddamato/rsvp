@@ -52,6 +52,21 @@ FLASK_DEBUG=1 POSTGRES_HOST=localhost flask --app rsvp run
 8. `./scripts/init-letsencrypt.sh` (one time, needs DNS live first)
 9. Install the renewal cron: see `scripts/crontab.example`
 
+### Temporary HTTP-only mode
+
+Before DNS/cert is ready (or to test without HTTPS briefly), swap nginx
+to serve plain HTTP on port 80 instead of redirecting to HTTPS:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.http-only.yml up -d nginx
+```
+
+Revert to the normal redirect+TLS config with the base file alone:
+
+```bash
+docker compose up -d nginx
+```
+
 ## Bulk guest upload
 
 CSV with a header row, columns `primary_name,email,max_guests`. Upload

@@ -1,0 +1,40 @@
+# Temporary HTTP-only mode: serves the app directly on port 80, no TLS,
+# no redirect to HTTPS. Useful before DNS/cert is set up, or to test
+# without HTTPS briefly. Enable with:
+#   docker compose -f docker-compose.yml -f docker-compose.http-only.yml up -d nginx
+# Revert to the normal redirect+TLS config with:
+#   docker compose up -d nginx
+
+limit_req_zone $binary_remote_addr zone=rsvp_limit:10m rate=5r/m;
+
+server {
+    listen 80;
+    server_name ${DOMAIN_NAME};
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    location = / {
+        limit_req zone=rsvp_limit burst=5 nodelay;
+        proxy_pass http://python_app:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Forwarded-Proto http;
+    }
+
+    location = /recover {
+        limit_req zone=rsvp_limit burst=5 nodelay;
+        proxy_pass http://python_app:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Forwarded-Proto http;
+    }
+
+    location / {
+        proxy_pass http://python_app:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Forwarded-Proto http;
+    }
+}

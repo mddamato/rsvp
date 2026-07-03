@@ -171,6 +171,15 @@ resource "aws_instance" "rsvp" {
     curl -sL "https://github.com/docker/compose/releases/latest/download/docker-compose-linux-$${ARCH}" \
       -o /usr/local/lib/docker/cli-plugins/docker-compose
     chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
+    case "$${ARCH}" in
+      aarch64) BUILDX_ARCH=arm64 ;;
+      x86_64) BUILDX_ARCH=amd64 ;;
+      *) echo "unsupported arch $${ARCH}" >&2; exit 1 ;;
+    esac
+    BUILDX_VERSION=$(curl -sL https://api.github.com/repos/docker/buildx/releases/latest | grep -m1 tag_name | cut -d '"' -f4)
+    curl -sL "https://github.com/docker/buildx/releases/download/$${BUILDX_VERSION}/buildx-$${BUILDX_VERSION}.linux-$${BUILDX_ARCH}" \
+      -o /usr/local/lib/docker/cli-plugins/docker-buildx
+    chmod +x /usr/local/lib/docker/cli-plugins/docker-buildx
     usermod -aG docker ec2-user
   EOT
 

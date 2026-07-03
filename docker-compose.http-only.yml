@@ -1,0 +1,10 @@
+# Override to serve plain HTTP instead of redirecting to HTTPS.
+# Use before DNS/cert is ready, or to test without HTTPS temporarily:
+#   docker compose -f docker-compose.yml -f docker-compose.http-only.yml up -d nginx
+# Revert with the base file alone: docker compose up -d nginx
+services:
+  nginx:
+    volumes:
+      - ./config/nginx.http-only.conf.template:/etc/nginx/templates/default.conf.template:ro
+      - certbot-etc:/etc/letsencrypt
+      - certbot-webroot:/var/www/certbot
