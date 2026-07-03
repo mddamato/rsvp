@@ -1,0 +1,27 @@
+/* THEME: Holiday party — festive red/green/gold on warm cream.
+   To apply: copy this whole :root block over the one at the top of
+   ../style.css (lines 9-32). System fonts only, so nothing to download. */
+:root {
+  /* Colors */
+  --color-background: #f7f1e6;   /* snow cream */
+  --color-surface: #ffffff;
+  --color-text: #22301f;         /* deep pine */
+  --color-muted: #6e6e6e;
+  --color-accent: #a11d33;       /* holly red */
+  --color-accent-text: #ffffff;
+  --color-notice-bg: #fdf0d5;
+  --color-notice-text: #7a5200;
+  --color-border: #d8bd75;       /* muted gold */
+
+  /* Type */
+  --font-heading: Georgia, 'Times New Roman', serif;
+  --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI',
+               Roboto, Helvetica, Arial, sans-serif;
+  --heading-weight: 700;
+  --heading-tracking: 0.01em;
+
+  /* Shape and rhythm */
+  --radius: 10px;
+  --space: 1rem;
+  --card-max-width: 34rem;
+}

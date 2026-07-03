@@ -22,6 +22,14 @@ Colors, fonts, corner radius, and spacing are all controlled there.
 Nothing else needs to change for a basic reskin. Event title lives in
 `app/rsvp/templates/base.html`.
 
+Preset variable blocks for common party themes are in
+`app/rsvp/static/themes/` — copy one over the `:root { ... }` block at
+the top of `style.css` to apply it:
+
+- `kids-party.css` — bright, playful, rounded corners
+- `wedding.css` — black & white, script heading, serif body
+- `holiday-party.css` — festive red/green/gold on warm cream
+
 ## Local development
 
 ```bash

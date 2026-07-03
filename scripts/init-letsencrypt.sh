@@ -30,7 +30,7 @@ docker compose run --rm --entrypoint /bin/sh certbot -c "
          /etc/letsencrypt/archive/${DOMAIN_NAME} \
          /etc/letsencrypt/renewal/${DOMAIN_NAME}.conf"
 
-docker compose run --rm certbot certonly \
+docker compose run --rm --entrypoint certbot certbot certonly \
   --webroot -w /var/www/certbot \
   -d "${DOMAIN_NAME}" \
   --agree-tos --no-eff-email --register-unsafely-without-email
