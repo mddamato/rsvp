@@ -52,6 +52,12 @@ services:
     image: certbot/certbot
     container_name: rsvp_certbot
     restart: unless-stopped
+    # Let's Encrypt's ACME endpoint resolves to an IPv6-only address in
+    # some DNS responses (Cloudflare-fronted), but the Docker bridge
+    # network has no IPv6 route out, so requests hang until timeout.
+    # Disabling IPv6 in this container's netns forces IPv4, which works.
+    sysctls:
+      - net.ipv6.conf.all.disable_ipv6=1
     volumes:
       - certbot-etc:/etc/letsencrypt
       - certbot-webroot:/var/www/certbot
