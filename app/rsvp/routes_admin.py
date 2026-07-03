@@ -109,6 +109,46 @@ def add_invitee():
     return redirect(url_for("admin.dashboard"))
 
 
+@bp.get("/edit/<invitee_id>")
+@auth.login_required
+def edit_invitee_form(invitee_id):
+    try:
+        parsed = uuid.UUID(invitee_id)
+    except ValueError:
+        return redirect(url_for("admin.dashboard"))
+    invitee = db.fetch_invitee_by_id(parsed)
+    if not invitee:
+        return redirect(url_for("admin.dashboard"))
+    return render_template("admin_edit.html", invitee=invitee)
+
+
+@bp.post("/edit/<invitee_id>")
+@auth.login_required
+def edit_invitee_submit(invitee_id):
+    try:
+        parsed = uuid.UUID(invitee_id)
+    except ValueError:
+        return redirect(url_for("admin.dashboard"))
+
+    name = (request.form.get("primary_name") or "").strip()
+    if not name:
+        flash("Name is required.")
+        return redirect(url_for("admin.edit_invitee_form", invitee_id=invitee_id))
+
+    email = (request.form.get("email") or "").strip()
+    try:
+        max_guests = int((request.form.get("max_guests") or "0").strip() or 0)
+    except ValueError:
+        max_guests = 0
+
+    if not db.update_invitee(parsed, name, email, max_guests):
+        flash("Guest not found.")
+        return redirect(url_for("admin.dashboard"))
+
+    flash(f"Updated {name}.")
+    return redirect(url_for("admin.dashboard"))
+
+
 @bp.get("/card/<invitee_id>")
 @auth.login_required
 def card_view(invitee_id):

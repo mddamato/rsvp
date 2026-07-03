@@ -133,6 +133,20 @@ def update_rsvp(invitee_id, status, plus_one_details, comments):
         return True
 
 
+def update_invitee(invitee_id, primary_name, email, max_guests):
+    """Update an invitee's contact info. Returns False if no such id."""
+    with get_conn() as conn, conn.cursor() as cur:
+        cur.execute(
+            """
+            UPDATE invitees
+               SET primary_name = %s, email = %s, max_guests = %s
+             WHERE id = %s
+            """,
+            (primary_name, email or None, max_guests, invitee_id),
+        )
+        return cur.rowcount > 0
+
+
 def insert_invitee(primary_name, email, max_guests, lookup_phrase):
     """Insert one invitee. Raises psycopg2.errors.UniqueViolation on a
     phrase collision so the caller can regenerate and retry."""
