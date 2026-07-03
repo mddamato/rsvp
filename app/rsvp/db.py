@@ -147,6 +147,13 @@ def update_invitee(invitee_id, primary_name, email, max_guests):
         return cur.rowcount > 0
 
 
+def delete_invitee(invitee_id):
+    """Delete an invitee. Returns False if no such id."""
+    with get_conn() as conn, conn.cursor() as cur:
+        cur.execute("DELETE FROM invitees WHERE id = %s", (invitee_id,))
+        return cur.rowcount > 0
+
+
 def insert_invitee(primary_name, email, max_guests, lookup_phrase):
     """Insert one invitee. Raises psycopg2.errors.UniqueViolation on a
     phrase collision so the caller can regenerate and retry."""

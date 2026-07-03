@@ -29,7 +29,7 @@
 
 <table class="guest-table">
   <thead>
-    <tr><th>Guest</th><th>Status</th><th>Guests</th><th>Notes</th><th>Card</th><th></th></tr>
+    <tr><th>Guest</th><th>Status</th><th>Guests</th><th>Notes</th><th>Card</th><th></th><th></th></tr>
   </thead>
   <tbody>
   {% for g in invitees %}
@@ -40,9 +40,14 @@
       <td>{{ g.comments or '' }}</td>
       <td><a href="/admin/card/{{ g.id }}">View card</a></td>
       <td><a href="/admin/edit/{{ g.id }}">Edit</a></td>
+      <td>
+        <form method="post" action="/admin/delete/{{ g.id }}" onsubmit="return confirm('Delete {{ g.primary_name }}? This cannot be undone.');">
+          <button type="submit" class="link-button" data-once>Delete</button>
+        </form>
+      </td>
     </tr>
   {% else %}
-    <tr><td colspan="6">No guests yet. Upload a CSV above to get started.</td></tr>
+    <tr><td colspan="7">No guests yet. Upload a CSV above to get started.</td></tr>
   {% endfor %}
   </tbody>
 </table>

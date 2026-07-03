@@ -149,6 +149,21 @@ def edit_invitee_submit(invitee_id):
     return redirect(url_for("admin.dashboard"))
 
 
+@bp.post("/delete/<invitee_id>")
+@auth.login_required
+def delete_invitee(invitee_id):
+    try:
+        parsed = uuid.UUID(invitee_id)
+    except ValueError:
+        return redirect(url_for("admin.dashboard"))
+
+    if db.delete_invitee(parsed):
+        flash("Guest deleted.")
+    else:
+        flash("Guest not found.")
+    return redirect(url_for("admin.dashboard"))
+
+
 @bp.get("/card/<invitee_id>")
 @auth.login_required
 def card_view(invitee_id):
