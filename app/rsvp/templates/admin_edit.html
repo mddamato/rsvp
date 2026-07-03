@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block heading %}Edit guest{% endblock %}
+{% block content %}
+{% with messages = get_flashed_messages() %}
+  {% for m in messages %}<p class="notice">{{ m }}</p>{% endfor %}
+{% endwith %}
+<form method="post" action="/admin/edit/{{ invitee.id }}">
+  <label for="primary_name">Name</label>
+  <input type="text" id="primary_name" name="primary_name" value="{{ invitee.primary_name }}" required>
+  <label for="email">Email</label>
+  <input type="email" id="email" name="email" value="{{ invitee.email or '' }}">
+  <label for="max_guests">Max guests</label>
+  <input type="number" id="max_guests" name="max_guests" min="0" value="{{ invitee.max_guests }}">
+  <button type="submit" data-once>Save</button>
+</form>
+<a href="/admin/dashboard">Cancel</a>
+{% endblock %}
