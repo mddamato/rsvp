@@ -1,5 +1,7 @@
 {% extends "base.html" %}
 {% block heading %}Guest dashboard{% endblock %}
+{% block subheading %}{% endblock %}
+{% block details %}{% endblock %}
 {% block content %}
 {% with messages = get_flashed_messages() %}
   {% for m in messages %}<p class="notice">{{ m }}</p>{% endfor %}

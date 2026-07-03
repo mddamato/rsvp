@@ -10,7 +10,9 @@
   <main class="card">
     <header class="card-header">
       <p class="eyebrow">You're invited</p>
-      <h1 class="event-title">{% block heading %}Our Celebration{% endblock %}</h1>
+      <h1 class="event-title">{% block heading %}{{ config.EVENT_TITLE }}{% endblock %}</h1>
+      {% block subheading %}{% if config.EVENT_SUBHEADING %}<p class="event-subheading">{{ config.EVENT_SUBHEADING }}</p>{% endif %}{% endblock %}
+      {% block details %}{% if config.EVENT_DETAILS %}<p class="event-details">{{ config.EVENT_DETAILS }}</p>{% endif %}{% endblock %}
     </header>
     {% block content %}{% endblock %}
   </main>

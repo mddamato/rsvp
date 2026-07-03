@@ -15,6 +15,15 @@ infra/           OpenTofu for EC2, security group, IAM, backup bucket
 tests/           pytest suite (run: python3 -m pytest tests/)
 ```
 
+## Event text
+
+`EVENT_TITLE`, `EVENT_SUBHEADING`, and `EVENT_DETAILS` in `config/.env`
+control the text guests see at the top of every page: the main title,
+an optional line underneath for date/time, and an optional paragraph
+below that for longer instructions (parking, directions, dress code,
+etc). Only `EVENT_TITLE` has a default ("Our Celebration"); the other
+two are hidden if left unset. Admin pages don't show any of this.
+
 ## Theming
 
 Edit the variable block at the top of `app/rsvp/static/style.css`.
@@ -61,6 +70,10 @@ FLASK_DEBUG=1 POSTGRES_HOST=localhost flask --app rsvp run
 7. `docker compose up -d`
 8. `./scripts/init-letsencrypt.sh` (one time, needs DNS live first)
 9. Install the renewal cron: see `scripts/crontab.example`
+
+
+docker compose down && git pull origin main && docker build -t rsvp-python_app ./app/ && docker compose up -d
+
 
 ### Temporary HTTP-only mode
 

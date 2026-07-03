@@ -78,6 +78,21 @@ body {
   font-size: clamp(1.6rem, 5vw, 2.2rem);
 }
 
+.event-subheading {
+  margin: 0.35rem 0 0;
+  text-align: center;
+  font-family: var(--font-heading);
+  color: var(--color-muted);
+  font-size: 1.05rem;
+}
+
+.event-details {
+  margin: 0.5rem 0 0;
+  text-align: center;
+  color: var(--color-muted);
+  font-size: 0.92rem;
+}
+
 .lede { text-align: center; margin: 0 0 var(--space); }
 
 form { display: flex; flex-direction: column; gap: 0.5rem; }
