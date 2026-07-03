@@ -1,0 +1,222 @@
+/* ==========================================================
+   THEME CONTROL PANEL
+   Edit the values below to reskin the whole app for your
+   event. Nothing else in this file needs to change for a
+   basic reskin. Fonts listed are system fonts, so pages load
+   with zero font downloads. To use a web font, add a @font-face
+   or <link> yourself and change the font variables here.
+   ========================================================== */
+:root {
+  /* Colors */
+  --color-background: #f7f5f0;   /* page background */
+  --color-surface: #ffffff;      /* the card guests see */
+  --color-text: #26221c;         /* main text */
+  --color-muted: #7a7368;        /* secondary text */
+  --color-accent: #4a6151;       /* buttons, links, highlights */
+  --color-accent-text: #ffffff;  /* text on top of the accent */
+  --color-notice-bg: #fdf3e2;    /* error / info messages */
+  --color-notice-text: #7a4b12;
+  --color-border: #ddd7cc;
+
+  /* Type */
+  --font-heading: Georgia, 'Times New Roman', serif;
+  --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI',
+               Roboto, Helvetica, Arial, sans-serif;
+  --heading-weight: 400;
+  --heading-tracking: 0.01em;
+
+  /* Shape and rhythm */
+  --radius: 10px;
+  --space: 1rem;
+  --card-max-width: 34rem;
+}
+
+/* ==========================================================
+   Everything below is layout. You shouldn't need to touch it.
+   ========================================================== */
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: calc(var(--space) * 2) var(--space);
+  background: var(--color-background);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+.card {
+  width: 100%;
+  max-width: var(--card-max-width);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: calc(var(--space) * 2);
+}
+
+.card-header { text-align: center; margin-bottom: calc(var(--space) * 1.5); }
+
+.eyebrow {
+  margin: 0 0 0.25rem;
+  font-size: 0.78rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+.event-title {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-weight: var(--heading-weight);
+  letter-spacing: var(--heading-tracking);
+  font-size: clamp(1.6rem, 5vw, 2.2rem);
+}
+
+.lede { text-align: center; margin: 0 0 var(--space); }
+
+form { display: flex; flex-direction: column; gap: 0.5rem; }
+
+label { font-size: 0.9rem; color: var(--color-muted); margin-top: 0.5rem; }
+
+input[type="text"], input[type="email"], input[type="password"],
+input[type="file"], textarea {
+  font: inherit;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: calc(var(--radius) * 0.6);
+  background: var(--color-surface);
+  color: var(--color-text);
+  width: 100%;
+}
+
+input:focus-visible, textarea:focus-visible, button:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+button {
+  margin-top: var(--space);
+  font: inherit;
+  font-weight: 600;
+  padding: 0.75rem 1rem;
+  border: none;
+  border-radius: calc(var(--radius) * 0.6);
+  background: var(--color-accent);
+  color: var(--color-accent-text);
+  cursor: pointer;
+}
+
+button[disabled] { opacity: 0.6; cursor: wait; }
+
+a { color: var(--color-accent); }
+
+.notice {
+  background: var(--color-notice-bg);
+  color: var(--color-notice-text);
+  border-radius: calc(var(--radius) * 0.6);
+  padding: 0.6rem 0.8rem;
+  font-size: 0.92rem;
+}
+
+.fine-print {
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--color-muted);
+  margin-top: calc(var(--space) * 1.5);
+}
+
+/* RSVP choice radios rendered as tappable pills */
+.choice-row { border: none; padding: 0; margin: 0; display: flex; gap: 0.5rem; }
+.choice-row legend { font-size: 0.9rem; color: var(--color-muted); margin-bottom: 0.4rem; }
+.choice { flex: 1; }
+.choice input { position: absolute; opacity: 0; }
+.choice span {
+  display: block;
+  text-align: center;
+  padding: 0.7rem 0.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: calc(var(--radius) * 0.6);
+  cursor: pointer;
+}
+.choice input:checked + span {
+  background: var(--color-accent);
+  color: var(--color-accent-text);
+  border-color: var(--color-accent);
+}
+.choice input:focus-visible + span {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* Honeypot: visually removed, still in the DOM for bots */
+.hp {
+  position: absolute !important;
+  left: -9999px !important;
+  width: 1px; height: 1px;
+  overflow: hidden;
+}
+
+/* Admin dashboard */
+.stat-row { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: var(--space); }
+.stat {
+  flex: 1 1 5.5rem;
+  text-align: center;
+  border: 1px solid var(--color-border);
+  border-radius: calc(var(--radius) * 0.6);
+  padding: 0.6rem 0.25rem;
+}
+.stat-num { display: block; font-size: 1.4rem; font-weight: 700; }
+.stat-label { font-size: 0.75rem; color: var(--color-muted); text-transform: uppercase; letter-spacing: 0.08em; }
+
+.upload-row { margin-bottom: var(--space); }
+
+.guest-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+.guest-table th, .guest-table td {
+  text-align: left;
+  padding: 0.5rem 0.4rem;
+  border-bottom: 1px solid var(--color-border);
+  vertical-align: top;
+}
+.guest-table th { color: var(--color-muted); font-weight: 600; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; }
+
+.logout-row { margin-top: var(--space); align-items: center; }
+.link-button {
+  background: none;
+  color: var(--color-muted);
+  font-weight: 400;
+  text-decoration: underline;
+  padding: 0.25rem;
+}
+
+/* Printable card */
+.print-card { text-align: center; }
+.print-card img { border: 1px solid var(--color-border); border-radius: calc(var(--radius) * 0.6); }
+.phrase-display {
+  font-family: var(--font-heading);
+  font-size: 1.5rem;
+  letter-spacing: 0.04em;
+  margin: 0.75rem 0 0.25rem;
+}
+
+@media print {
+  body { padding: 0; background: #fff; }
+  .card { border: none; }
+  .no-print { display: none; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  button { transition: transform 120ms ease; }
+  button:active { transform: scale(0.98); }
+}
+
+@media (max-width: 480px) {
+  .card { padding: calc(var(--space) * 1.25); }
+  .choice-row { flex-direction: column; }
+  .guest-table th:nth-child(4), .guest-table td:nth-child(4) { display: none; }
+}

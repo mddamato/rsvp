@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block content %}
+<p class="lede">Hello, {{ invitee.primary_name }}! Will you be joining us?</p>
+<form method="post" action="/rsvp">
+  <input type="text" name="honeypot" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true">
+  <input type="hidden" name="invitee_id" value="{{ invitee.id }}">
+
+  <fieldset class="choice-row">
+    <legend>Your answer</legend>
+    <label class="choice">
+      <input type="radio" name="rsvp_status" value="Attending" required
+             {% if invitee.rsvp_status == 'Attending' %}checked{% endif %}>
+      <span>Joyfully attending</span>
+    </label>
+    <label class="choice">
+      <input type="radio" name="rsvp_status" value="Declined"
+             {% if invitee.rsvp_status == 'Declined' %}checked{% endif %}>
+      <span>Regretfully declining</span>
+    </label>
+  </fieldset>
+
+  {% if invitee.max_guests > 0 %}
+  <label for="plus_one_details">
+    Guests joining you (up to {{ invitee.max_guests }})
+  </label>
+  <input type="text" id="plus_one_details" name="plus_one_details"
+         value="{{ invitee.plus_one_details or '' }}"
+         placeholder="Names, separated by commas">
+  {% endif %}
+
+  <label for="comments">Dietary needs or a note for us</label>
+  <textarea id="comments" name="comments" rows="3">{{ invitee.comments or '' }}</textarea>
+
+  <button type="submit" data-once>Send my RSVP</button>
+</form>
+{% if invitee.rsvp_status != 'Pending' %}
+<p class="fine-print">You previously answered <strong>{{ invitee.rsvp_status }}</strong>. Submitting again updates your answer.</p>
+{% endif %}
+{% endblock %}

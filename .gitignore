@@ -3,6 +3,9 @@ __pycache__/
 *.py[codz]
 *$py.class
 
+/infra/.terraform
+/infra/.terraform/**
+/infra/terraform.tfstate*
 # C extensions
 *.so
 
@@ -216,3 +219,16 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+config/.env
+config/htpasswd
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+
+
+htpasswd_reference/bin
+htpasswd_reference/include
+htpasswd_reference/lib
+htpasswd_reference/pyvenv.cfg

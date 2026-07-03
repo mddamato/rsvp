@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block heading %}Host sign in{% endblock %}
+{% block content %}
+{% with messages = get_flashed_messages() %}
+  {% for m in messages %}<p class="notice">{{ m }}</p>{% endfor %}
+{% endwith %}
+<form method="post" action="/admin/login">
+  <label for="username">Username</label>
+  <input type="text" id="username" name="username" autocomplete="username" required>
+  <label for="password">Password</label>
+  <input type="password" id="password" name="password" autocomplete="current-password" required>
+  <button type="submit" data-once>Sign in</button>
+</form>
+{% endblock %}

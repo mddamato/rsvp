@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block heading %}{{ invitee.primary_name }}{% endblock %}
+{% block content %}
+<div class="print-card">
+  <img src="/admin/qr/{{ invitee.id }}" alt="QR code for {{ invitee.primary_name }}" width="240" height="240">
+  <p class="phrase-display">{{ invitee.lookup_phrase }}</p>
+  <p class="fine-print">{{ url }}</p>
+</div>
+<p class="fine-print no-print"><a href="/admin/dashboard">Back to dashboard</a> &middot; use your browser's print dialog to print this card.</p>
+{% endblock %}

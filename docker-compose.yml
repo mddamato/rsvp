@@ -1,0 +1,96 @@
+services:
+  nginx:
+    image: nginx:alpine
+    container_name: rsvp_nginx
+    restart: unless-stopped
+    env_file:
+      - ./config/.env
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./config/nginx.conf.template:/etc/nginx/templates/default.conf.template:ro
+      - certbot-etc:/etc/letsencrypt
+      - certbot-webroot:/var/www/certbot
+    depends_on:
+      - python_app
+    networks:
+      - internal
+
+  python_app:
+    build: ./app
+    container_name: rsvp_app
+    restart: unless-stopped
+    env_file:
+      - ./config/.env
+    volumes:
+      - ./config/htpasswd:/etc/rsvp/.htpasswd:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - internal
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: rsvp_postgres
+    restart: unless-stopped
+    env_file:
+      - ./config/.env
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./app/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - internal
+
+  certbot:
+    image: certbot/certbot
+    container_name: rsvp_certbot
+    restart: unless-stopped
+    volumes:
+      - certbot-etc:/etc/letsencrypt
+      - certbot-webroot:/var/www/certbot
+    # Sleeps forever. Renewal is driven by the host cron job
+    # (scripts/crontab.example), which execs into this container.
+    entrypoint: ["/bin/sh", "-c", "trap exit TERM; while :; do sleep 3600; done"]
+
+  backup:
+    build: ./backup
+    container_name: rsvp_backup
+    restart: unless-stopped
+    env_file:
+      - ./config/.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - internal
+
+  # Optional: Prometheus metrics for nginx. Uncomment this service and
+  # the stub_status block in config/nginx.conf.template to enable.
+  # nginx-exporter:
+  #   image: nginx/nginx-prometheus-exporter:1.5.1
+  #   container_name: rsvp_nginx_exporter
+  #   restart: unless-stopped
+  #   command:
+  #     - --nginx.scrape-uri=http://nginx:8081/stub_status
+  #   ports:
+  #     - "9113:9113"
+  #   depends_on:
+  #     - nginx
+  #   networks:
+  #     - internal
+
+networks:
+  internal:
+    driver: bridge
+
+volumes:
+  pgdata:
+  certbot-etc:
+  certbot-webroot:

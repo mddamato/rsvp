@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block content %}
+{% if submitted %}
+<p class="lede">If that email matches an invitation, your link is on its way. Check your inbox.</p>
+{% else %}
+<p class="lede">Lost your card? Enter the email your invitation was sent to.</p>
+<form method="post" action="/recover">
+  <input type="text" name="honeypot" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true">
+  <label for="email">Email address</label>
+  <input type="email" id="email" name="email" required>
+  <button type="submit" data-once>Send my link</button>
+</form>
+{% endif %}
+{% endblock %}

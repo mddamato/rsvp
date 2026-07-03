@@ -1,0 +1,7 @@
+# Host-level crontab entries for the RSVP app (crontab -e on the EC2 host).
+# Adjust /opt/rsvp-app if the repo lives elsewhere.
+
+# Renew Let's Encrypt cert daily at 03:00 UTC. certbot renew is a no-op
+# unless the cert is within 30 days of expiry. Reload nginx afterward so
+# it picks up new cert files.
+0 3 * * * docker exec rsvp_certbot certbot renew --webroot -w /var/www/certbot --quiet && docker exec rsvp_nginx nginx -s reload

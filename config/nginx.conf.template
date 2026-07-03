@@ -1,0 +1,70 @@
+# Rendered by the official nginx image's envsubst templating on start.
+# ${DOMAIN_NAME} comes from config/.env. Nginx's own runtime variables
+# ($host, $request_uri, $binary_remote_addr) are left untouched because
+# the image only substitutes variables that exist in the environment.
+
+limit_req_zone $binary_remote_addr zone=rsvp_limit:10m rate=5r/m;
+
+server {
+    listen 80;
+    server_name ${DOMAIN_NAME};
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name ${DOMAIN_NAME};
+
+    ssl_certificate /etc/letsencrypt/live/${DOMAIN_NAME}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${DOMAIN_NAME}/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+
+    gzip on;
+    gzip_types text/html text/css application/javascript;
+
+    # Brute-force defense on the two guessable endpoints.
+    # burst=5 nodelay lets a real guest's first attempts through
+    # instantly, then returns 429 until the rate window recovers.
+    location = / {
+        limit_req zone=rsvp_limit burst=5 nodelay;
+        proxy_pass http://python_app:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Forwarded-Proto https;
+    }
+
+    location = /recover {
+        limit_req zone=rsvp_limit burst=5 nodelay;
+        proxy_pass http://python_app:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Forwarded-Proto https;
+    }
+
+    location / {
+        proxy_pass http://python_app:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Forwarded-Proto https;
+    }
+}
+
+# Optional: expose stub_status for the Prometheus exporter, on an
+# internal-only port. Uncomment along with the nginx-exporter service
+# in docker-compose.yml.
+# server {
+#     listen 8081;
+#     location /stub_status {
+#         stub_status on;
+#         allow 172.16.0.0/12;   # docker internal network only
+#         deny all;
+#     }
+# }

@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block heading %}Guest dashboard{% endblock %}
+{% block content %}
+{% with messages = get_flashed_messages() %}
+  {% for m in messages %}<p class="notice">{{ m }}</p>{% endfor %}
+{% endwith %}
+
+<div class="stat-row">
+  <div class="stat"><span class="stat-num">{{ counts.total }}</span><span class="stat-label">Invited</span></div>
+  <div class="stat"><span class="stat-num">{{ counts.attending }}</span><span class="stat-label">Attending</span></div>
+  <div class="stat"><span class="stat-num">{{ counts.declined }}</span><span class="stat-label">Declined</span></div>
+  <div class="stat"><span class="stat-num">{{ counts.pending }}</span><span class="stat-label">Pending</span></div>
+  <div class="stat"><span class="stat-num">{{ counts.with_comments }}</span><span class="stat-label">With notes</span></div>
+</div>
+
+<form method="post" action="/admin/upload-csv" enctype="multipart/form-data" class="upload-row">
+  <label for="csv_file">Bulk upload guests (CSV: primary_name, email, max_guests)</label>
+  <input type="file" id="csv_file" name="csv_file" accept=".csv,text/csv">
+  <button type="submit" data-once>Upload</button>
+</form>
+
+<table class="guest-table">
+  <thead>
+    <tr><th>Guest</th><th>Status</th><th>Guests</th><th>Notes</th><th>Card</th></tr>
+  </thead>
+  <tbody>
+  {% for g in invitees %}
+    <tr>
+      <td>{{ g.primary_name }}</td>
+      <td>{{ g.rsvp_status }}</td>
+      <td>{{ g.plus_one_details or '' }}</td>
+      <td>{{ g.comments or '' }}</td>
+      <td><a href="/admin/card/{{ g.id }}">View card</a></td>
+    </tr>
+  {% else %}
+    <tr><td colspan="5">No guests yet. Upload a CSV above to get started.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+<form method="post" action="/admin/logout" class="logout-row">
+  <button type="submit" class="link-button">Sign out</button>
+</form>
+{% endblock %}
