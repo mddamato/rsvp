@@ -23,6 +23,16 @@ server {
     ssl_certificate_key /etc/nginx/certs/cloudflare_origin_server.key;
     ssl_protocols TLSv1.2 TLSv1.3;
 
+    # Authenticated Origin Pulls: reject any connection that doesn't
+    # present a client certificate signed by Cloudflare, so the origin
+    # can't be reached by going around Cloudflare directly. Requires
+    # "Authenticated Origin Pulls" enabled in the Cloudflare dashboard
+    # (SSL/TLS > Origin Server) — Cloudflare won't present a client
+    # cert otherwise, and every request, including Cloudflare's own,
+    # will fail the handshake until that's turned on.
+    ssl_client_certificate /etc/nginx/certs/cloudflare_origin_pull_ca.pem;
+    ssl_verify_client on;
+
     gzip on;
     gzip_types text/html text/css application/javascript;
 

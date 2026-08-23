@@ -11,3 +11,4 @@ services:
       - ./config/nginx.cloudflare.conf.template:/etc/nginx/templates/default.conf.template:ro
       - ./config/cloudflare_origin_server.crt:/etc/nginx/certs/cloudflare_origin_server.crt:ro
       - ./config/cloudflare_origin_server.key:/etc/nginx/certs/cloudflare_origin_server.key:ro
+      - ./config/cloudflare_origin_pull_ca.pem:/etc/nginx/certs/cloudflare_origin_pull_ca.pem:ro

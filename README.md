@@ -105,7 +105,15 @@ expiry).
    Certificate. Save the cert and key as
    `config/cloudflare_origin_server.crt` and
    `config/cloudflare_origin_server.key`.
-2. `docker compose -f docker-compose.yml -f docker-compose.cloudflare.yml up -d nginx`
+2. In the same Cloudflare dashboard page, enable **Authenticated
+   Origin Pulls**. nginx is configured to require it
+   (`ssl_verify_client on` against `config/cloudflare_origin_pull_ca.pem`,
+   Cloudflare's published origin-pull CA — already in the repo, public,
+   not a secret) so the origin can't be reached by going around
+   Cloudflare directly. **Enable this before step 3** — until it's on,
+   Cloudflare doesn't present a client certificate either, so nginx
+   will reject Cloudflare's own requests too and the site goes down.
+3. `docker compose -f docker-compose.yml -f docker-compose.cloudflare.yml up -d nginx`
 
 Revert to Let's Encrypt with the base file alone:
 `docker compose up -d nginx`. The two TLS modes are mutually exclusive
