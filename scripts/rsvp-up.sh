@@ -6,7 +6,7 @@
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
-source config/.env
+TLS_MODE=$(grep -E '^TLS_MODE=' config/.env | tail -1 | cut -d= -f2-)
 
 files=(-f docker-compose.yml)
 if [ "${TLS_MODE:-letsencrypt}" = "cloudflare" ]; then
