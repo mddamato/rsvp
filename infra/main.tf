@@ -65,6 +65,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "backups" {
   rule {
     id     = "expire-old-backups"
     status = "Enabled"
+    filter {}
     expiration {
       days = 30
     }
@@ -99,6 +100,31 @@ resource "aws_security_group" "rsvp" {
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
+}
+
+# ---------- Secrets ----------
+# Containers only — values are pushed out of band with
+# `aws secretsmanager put-secret-value`, never through Terraform state
+# or git. recovery_window_in_days = 0 so a destroy/recreate during
+# iteration doesn't get stuck behind the default 30-day deletion hold.
+resource "aws_secretsmanager_secret" "env" {
+  name                    = "rsvp-app/env"
+  recovery_window_in_days = 0
+}
+
+resource "aws_secretsmanager_secret" "htpasswd" {
+  name                    = "rsvp-app/htpasswd"
+  recovery_window_in_days = 0
+}
+
+resource "aws_secretsmanager_secret" "cf_cert" {
+  name                    = "rsvp-app/cf-cert"
+  recovery_window_in_days = 0
+}
+
+resource "aws_secretsmanager_secret" "cf_key" {
+  name                    = "rsvp-app/cf-key"
+  recovery_window_in_days = 0
 }
 
 # ---------- IAM ----------
@@ -136,6 +162,17 @@ resource "aws_iam_role_policy" "ses_and_backup" {
         Effect   = "Allow"
         Action   = ["s3:PutObject"]
         Resource = "${aws_s3_bucket.backups.arn}/*"
+      },
+      {
+        Sid    = "ReadAppSecrets"
+        Effect = "Allow"
+        Action = ["secretsmanager:GetSecretValue"]
+        Resource = [
+          aws_secretsmanager_secret.env.arn,
+          aws_secretsmanager_secret.htpasswd.arn,
+          aws_secretsmanager_secret.cf_cert.arn,
+          aws_secretsmanager_secret.cf_key.arn,
+        ]
       }
     ]
   })
@@ -181,6 +218,38 @@ resource "aws_instance" "rsvp" {
       -o /usr/local/lib/docker/cli-plugins/docker-buildx
     chmod +x /usr/local/lib/docker/cli-plugins/docker-buildx
     usermod -aG docker ec2-user
+
+    cat > /etc/systemd/system/rsvp-secrets.service <<'UNIT'
+    [Unit]
+    Description=Fetch RSVP app secrets from Secrets Manager
+
+    [Service]
+    Type=oneshot
+    Environment=AWS_DEFAULT_REGION=${var.aws_region}
+    WorkingDirectory=/opt/rsvp-app
+    ExecStart=/opt/rsvp-app/scripts/fetch-secrets.sh
+    UNIT
+
+    cat > /etc/systemd/system/rsvp-app.service <<'UNIT'
+    [Unit]
+    Description=RSVP app (docker compose)
+    After=docker.service rsvp-secrets.service network-online.target
+    Requires=docker.service rsvp-secrets.service
+    Wants=network-online.target
+
+    [Service]
+    Type=oneshot
+    RemainAfterExit=yes
+    WorkingDirectory=/opt/rsvp-app
+    ExecStart=/opt/rsvp-app/scripts/rsvp-up.sh
+    ExecStop=/usr/bin/docker compose -f /opt/rsvp-app/docker-compose.yml down
+
+    [Install]
+    WantedBy=multi-user.target
+    UNIT
+
+    systemctl daemon-reload
+    systemctl enable rsvp-secrets.service rsvp-app.service
   EOT
 
   tags = { Name = "rsvp-app" }

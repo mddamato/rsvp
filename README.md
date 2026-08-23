@@ -92,6 +92,26 @@ Revert to the normal redirect+TLS config with the base file alone:
 docker compose up -d nginx
 ```
 
+### TLS: Let's Encrypt vs Cloudflare Origin Certificate
+
+The base `docker-compose.yml` terminates TLS with a Let's Encrypt cert
+(`./scripts/init-letsencrypt.sh`, see step 8 above). If the domain is
+proxied through Cloudflare with SSL/TLS set to Full (strict), you can
+use a Cloudflare Origin Certificate instead — it's valid for the
+Cloudflare-to-origin hop and doesn't need renewal via certbot (15-year
+expiry).
+
+1. In the Cloudflare dashboard: SSL/TLS > Origin Server > Create
+   Certificate. Save the cert and key as
+   `config/cloudflare_origin_server.crt` and
+   `config/cloudflare_origin_server.key`.
+2. `docker compose -f docker-compose.yml -f docker-compose.cloudflare.yml up -d nginx`
+
+Revert to Let's Encrypt with the base file alone:
+`docker compose up -d nginx`. The two TLS modes are mutually exclusive
+overrides of the same `nginx` service — don't combine this with
+`docker-compose.http-only.yml`.
+
 ## Bulk guest upload
 
 CSV with a header row, columns `primary_name,email,max_guests`. Upload

@@ -1,0 +1,56 @@
+# TLS via a Cloudflare Origin Certificate instead of Let's Encrypt. Use
+# when Cloudflare proxies this domain in Full (strict) mode. Enable with:
+#   docker compose -f docker-compose.yml -f docker-compose.cloudflare.yml up -d nginx
+# Revert to Let's Encrypt with the base file alone: docker compose up -d nginx
+
+limit_req_zone $binary_remote_addr zone=rsvp_limit:10m rate=20r/m;
+
+server {
+    listen 80;
+    server_name ${DOMAIN_NAME};
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name ${DOMAIN_NAME};
+
+    ssl_certificate /etc/nginx/certs/cloudflare_origin_server.crt;
+    ssl_certificate_key /etc/nginx/certs/cloudflare_origin_server.key;
+    ssl_protocols TLSv1.2 TLSv1.3;
+
+    gzip on;
+    gzip_types text/html text/css application/javascript;
+
+    # Brute-force defense on the two guessable endpoints. Keyed on
+    # source IP, so guests sharing one IP (same household/office NAT)
+    # share this budget too. burst=10 nodelay lets real guests' first
+    # attempts through instantly, then returns 429 until the window
+    # recovers.
+    location = / {
+        limit_req zone=rsvp_limit burst=10 nodelay;
+        proxy_pass http://python_app:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Forwarded-Proto https;
+    }
+
+    location = /recover {
+        limit_req zone=rsvp_limit burst=10 nodelay;
+        proxy_pass http://python_app:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Forwarded-Proto https;
+    }
+
+    location / {
+        proxy_pass http://python_app:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Forwarded-Proto https;
+    }
+}

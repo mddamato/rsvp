@@ -1,0 +1,13 @@
+# Override to serve TLS from a Cloudflare Origin Certificate instead of
+# Let's Encrypt. Requires config/cloudflare_origin_server.crt and
+# config/cloudflare_origin_server.key (generate in the Cloudflare
+# dashboard: SSL/TLS > Origin Server), and Cloudflare's proxy set to
+# Full (strict) for this domain. Use:
+#   docker compose -f docker-compose.yml -f docker-compose.cloudflare.yml up -d nginx
+# Revert to Let's Encrypt with the base file alone: docker compose up -d nginx
+services:
+  nginx:
+    volumes:
+      - ./config/nginx.cloudflare.conf.template:/etc/nginx/templates/default.conf.template:ro
+      - ./config/cloudflare_origin_server.crt:/etc/nginx/certs/cloudflare_origin_server.crt:ro
+      - ./config/cloudflare_origin_server.key:/etc/nginx/certs/cloudflare_origin_server.key:ro

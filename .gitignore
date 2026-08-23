@@ -220,8 +220,10 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
-#config/.env
+config/.env
 #config/htpasswd
+config/cloudflare_origin_server.crt
+config/cloudflare_origin_server.key
 __pycache__/
 *.pyc
 .pytest_cache/
