@@ -213,7 +213,11 @@ resource "aws_instance" "rsvp" {
       x86_64) BUILDX_ARCH=amd64 ;;
       *) echo "unsupported arch $${ARCH}" >&2; exit 1 ;;
     esac
-    BUILDX_VERSION=$(curl -sL https://api.github.com/repos/docker/buildx/releases/latest | grep -m1 tag_name | cut -d '"' -f4)
+    # Pinned instead of resolved via the GitHub releases/latest API,
+    # which is prone to silent failures under the API's unauthenticated
+    # rate limit and previously left an ancient buildx in place with no
+    # error (compose build requires buildx >= 0.17.0).
+    BUILDX_VERSION=v0.36.1
     curl -sL "https://github.com/docker/buildx/releases/download/$${BUILDX_VERSION}/buildx-$${BUILDX_VERSION}.linux-$${BUILDX_ARCH}" \
       -o /usr/local/lib/docker/cli-plugins/docker-buildx
     chmod +x /usr/local/lib/docker/cli-plugins/docker-buildx
