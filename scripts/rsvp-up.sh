@@ -13,4 +13,4 @@ if [ "${TLS_MODE:-letsencrypt}" = "cloudflare" ]; then
   files+=(-f docker-compose.cloudflare.yml)
 fi
 
-docker compose "${files[@]}" up -d
+docker compose "${files[@]}" up -d --build

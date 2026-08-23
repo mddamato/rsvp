@@ -10,7 +10,8 @@ single EC2 instance via Docker Compose. No frontend framework.
 config/          central config: .env (values), nginx template, htpasswd
 app/             Flask application, schema, EFF wordlist, Dockerfile
 backup/          nightly pg_dump-to-S3 sidecar
-scripts/         Let's Encrypt bootstrap, cron example, admin creation
+scripts/         Let's Encrypt bootstrap, cron example, admin creation,
+                 boot-time secrets fetch + app start (see Deploying)
 infra/           OpenTofu for EC2, security group, IAM, backup bucket
 tests/           pytest suite (run: python3 -m pytest tests/)
 ```
@@ -61,21 +62,66 @@ FLASK_DEBUG=1 POSTGRES_HOST=localhost flask --app rsvp run
 
 ## Deploying
 
+Secrets (`config/.env`, `config/htpasswd`, and the Cloudflare cert/key
+if used) never go through git or the AMI. They're pushed to AWS
+Secrets Manager from a laptop and pulled onto the instance by a
+systemd unit on every app start, so a pushed update takes effect on
+the next restart or reboot with no manual file copying.
+
 1. `cd infra && tofu init && tofu apply -var backup_bucket_name=YOUR-BUCKET`
    (optionally add `-var vpc_id=YOUR-VPC -var subnet_id=YOUR-SUBNET` to
-   deploy into an existing VPC/subnet instead of the account default)
+   deploy into an existing VPC/subnet instead of the account default).
+   This also creates four empty Secrets Manager containers
+   (`rsvp-app/env`, `rsvp-app/htpasswd`, `rsvp-app/cf-cert`,
+   `rsvp-app/cf-key`) and grants the instance role read access to
+   them.
 2. Verify SES sender identity for `SES_SENDER_EMAIL` in the AWS console
 3. Point your domain's A record at the output `public_ip`
-4. Connect via SSM Session Manager, clone this repo to `/opt/rsvp-app`
-5. `cp config/.env.example config/.env` and fill in real values
-6. `./scripts/create-admin.sh yourname`
-7. `docker compose up -d`
-8. `./scripts/init-letsencrypt.sh` (one time, needs DNS live first)
-9. Install the renewal cron: see `scripts/crontab.example`
+4. Prepare the secrets locally, then push them:
+   ```bash
+   cp config/.env.example config/.env        # edit values; set TLS_MODE
+   ./scripts/create-admin.sh yourname        # writes config/htpasswd
 
+   aws secretsmanager put-secret-value --secret-id rsvp-app/env --secret-string file://config/.env
+   aws secretsmanager put-secret-value --secret-id rsvp-app/htpasswd --secret-string file://config/htpasswd
+   ```
+   Using Cloudflare TLS mode (see below)? Push the cert/key too —
+   otherwise these can be left as empty secrets for now:
+   ```bash
+   aws secretsmanager put-secret-value --secret-id rsvp-app/cf-cert --secret-string file://config/cloudflare_origin_server.crt
+   aws secretsmanager put-secret-value --secret-id rsvp-app/cf-key --secret-string file://config/cloudflare_origin_server.key
+   ```
+5. Connect via SSM Session Manager, clone this repo to `/opt/rsvp-app`
+6. `sudo systemctl enable --now rsvp-app.service` — pulls the secrets
+   just pushed into `config/` (via the `rsvp-secrets` unit it depends
+   on), then brings the app up with `docker compose`. Both steps
+   repeat on every future boot.
+7. Using the default Let's Encrypt TLS mode: run
+   `./scripts/init-letsencrypt.sh` once (needs DNS live first), then
+   install the renewal cron — see `scripts/crontab.example`. Using
+   Cloudflare TLS mode instead, see below; no certbot step needed.
 
-docker compose down && git pull origin main && docker build -t rsvp-python_app ./app/ && docker compose up -d
+### Redeploying after a code change
 
+```bash
+git pull origin main
+sudo systemctl restart rsvp-app.service
+```
+
+Re-fetches current secrets and rebuilds/restarts containers with the
+new code, in one step.
+
+### Applying a pushed secret without a reboot
+
+```bash
+sudo systemctl restart rsvp-app.service
+```
+
+Same command as above — it always re-fetches secrets before bringing
+containers back up, so this is also how a `put-secret-value` pushed
+from a laptop (updated `.env`, rotated `htpasswd`, a renewed
+Cloudflare cert) takes effect immediately instead of waiting for the
+next reboot.
 
 ### Temporary HTTP-only mode
 
@@ -94,17 +140,25 @@ docker compose up -d nginx
 
 ### TLS: Let's Encrypt vs Cloudflare Origin Certificate
 
-The base `docker-compose.yml` terminates TLS with a Let's Encrypt cert
-(`./scripts/init-letsencrypt.sh`, see step 8 above). If the domain is
-proxied through Cloudflare with SSL/TLS set to Full (strict), you can
-use a Cloudflare Origin Certificate instead — it's valid for the
-Cloudflare-to-origin hop and doesn't need renewal via certbot (15-year
-expiry).
+`TLS_MODE` in `config/.env` (pushed to the `rsvp-app/env` secret, per
+step 4 above) picks the mode; `rsvp-app.service` selects the matching
+`docker-compose` override automatically on every start — no manual
+`docker compose -f ...` invocation needed on the server.
+
+**Let's Encrypt** (`TLS_MODE=letsencrypt`, the default) — run
+`./scripts/init-letsencrypt.sh` once DNS is live, and install the
+renewal cron (`scripts/crontab.example`).
+
+**Cloudflare Origin Certificate** (`TLS_MODE=cloudflare`) — valid for
+the Cloudflare-to-origin hop, no certbot/renewal needed (15-year
+expiry). Requires the domain proxied through Cloudflare with SSL/TLS
+set to Full (strict):
 
 1. In the Cloudflare dashboard: SSL/TLS > Origin Server > Create
    Certificate. Save the cert and key as
    `config/cloudflare_origin_server.crt` and
-   `config/cloudflare_origin_server.key`.
+   `config/cloudflare_origin_server.key`, then push both to Secrets
+   Manager (`rsvp-app/cf-cert`, `rsvp-app/cf-key` — step 4 above).
 2. In the same Cloudflare dashboard page, enable **Authenticated
    Origin Pulls**. nginx is configured to require it
    (`ssl_verify_client on` against `config/cloudflare_origin_pull_ca.pem`,
@@ -113,12 +167,17 @@ expiry).
    Cloudflare directly. **Enable this before step 3** — until it's on,
    Cloudflare doesn't present a client certificate either, so nginx
    will reject Cloudflare's own requests too and the site goes down.
-3. `docker compose -f docker-compose.yml -f docker-compose.cloudflare.yml up -d nginx`
+3. Set `TLS_MODE=cloudflare` in `config/.env`, push it
+   (`aws secretsmanager put-secret-value --secret-id rsvp-app/env --secret-string file://config/.env`),
+   then `sudo systemctl restart rsvp-app.service` on the instance to
+   pick it up.
 
-Revert to Let's Encrypt with the base file alone:
-`docker compose up -d nginx`. The two TLS modes are mutually exclusive
-overrides of the same `nginx` service — don't combine this with
-`docker-compose.http-only.yml`.
+Switching back to Let's Encrypt is the same in reverse: set
+`TLS_MODE=letsencrypt`, push, restart. To test either nginx config
+directly without touching secrets or restarting the whole app, the
+overrides still work standalone:
+`docker compose -f docker-compose.yml -f docker-compose.cloudflare.yml up -d nginx`
+(don't combine with `docker-compose.http-only.yml`).
 
 ## Bulk guest upload
 
