@@ -81,15 +81,84 @@ def test_self_register_creates_invitee_with_origin_self(client, app):
 
         resp = client.post(
             "/self-register",
-            data={"primary_name": " Alice Example ", "email": "", "max_guests": "2"},
+            data={
+                "primary_name": " Alice Example ",
+                "email": "",
+                "max_guests": "2",
+                "rsvp_status": "Attending",
+            },
         )
 
     assert resp.status_code == 200
     mock_phrases.insert_with_unique_phrase.assert_called_once_with(
         mock_db.insert_self_invitee, "Alice Example", "", 2
     )
+    mock_db.update_rsvp.assert_called_once_with(fake_id, "Attending", "", "")
     assert b"apple-sky-boat" in resp.data
     assert b"data:image/png;base64," in resp.data
+    assert b"attending" in resp.data.lower()
+
+
+def test_self_register_requires_rsvp_status(client, app):
+    app.config["ANONYMOUS_PHRASE"] = "Tonys third birthday"
+    with patch("rsvp.routes_public.phrases") as mock_phrases:
+        resp = client.post("/self-register", data={"primary_name": "Alice"})
+    assert resp.status_code == 200
+    assert b"whether you" in resp.data.lower()
+    mock_phrases.insert_with_unique_phrase.assert_not_called()
+
+    with patch("rsvp.routes_public.phrases") as mock_phrases:
+        resp = client.post(
+            "/self-register",
+            data={"primary_name": "Alice", "rsvp_status": "Maybe"},
+        )
+    assert resp.status_code == 200
+    assert b"whether you" in resp.data.lower()
+    mock_phrases.insert_with_unique_phrase.assert_not_called()
+
+
+def test_self_register_records_notes_and_declined_status(client, app):
+    app.config["ANONYMOUS_PHRASE"] = "Tonys third birthday"
+    fake_id = uuid.uuid4()
+    with patch("rsvp.routes_public.db") as mock_db, patch(
+        "rsvp.routes_public.phrases"
+    ) as mock_phrases, patch("rsvp.routes_public.services") as mock_services:
+        mock_phrases.insert_with_unique_phrase.return_value = (fake_id, "apple-sky-boat")
+        mock_services.invite_url.return_value = "https://example.com/"
+        mock_services.qr_png_bytes.return_value = b"fake-png-bytes"
+
+        resp = client.post(
+            "/self-register",
+            data={
+                "primary_name": "Bob",
+                "rsvp_status": "Declined",
+                "comments": "  Can't make it, sorry!  ",
+            },
+        )
+
+    assert resp.status_code == 200
+    mock_db.update_rsvp.assert_called_once_with(fake_id, "Declined", "", "Can't make it, sorry!")
+    assert b"declining" in resp.data.lower()
+
+
+def test_self_register_truncates_comments(client, app):
+    app.config["ANONYMOUS_PHRASE"] = "Tonys third birthday"
+    fake_id = uuid.uuid4()
+    long_comment = "x" * 3000
+    with patch("rsvp.routes_public.db") as mock_db, patch(
+        "rsvp.routes_public.phrases"
+    ) as mock_phrases, patch("rsvp.routes_public.services") as mock_services:
+        mock_phrases.insert_with_unique_phrase.return_value = (fake_id, "apple-sky-boat")
+        mock_services.invite_url.return_value = "https://example.com/"
+        mock_services.qr_png_bytes.return_value = b"fake-png-bytes"
+
+        client.post(
+            "/self-register",
+            data={"primary_name": "Alice", "rsvp_status": "Attending", "comments": long_comment},
+        )
+
+    args, _ = mock_db.update_rsvp.call_args
+    assert len(args[-1]) == 2000
 
 
 def test_self_register_clamps_max_guests(client, app):
@@ -104,21 +173,21 @@ def test_self_register_clamps_max_guests(client, app):
 
         client.post(
             "/self-register",
-            data={"primary_name": "Alice", "max_guests": "999"},
+            data={"primary_name": "Alice", "rsvp_status": "Attending", "max_guests": "999"},
         )
         args, _ = mock_phrases.insert_with_unique_phrase.call_args
         assert args[-1] == 20
 
         client.post(
             "/self-register",
-            data={"primary_name": "Alice", "max_guests": "-5"},
+            data={"primary_name": "Alice", "rsvp_status": "Attending", "max_guests": "-5"},
         )
         args, _ = mock_phrases.insert_with_unique_phrase.call_args
         assert args[-1] == 0
 
         client.post(
             "/self-register",
-            data={"primary_name": "Alice", "max_guests": "not-a-number"},
+            data={"primary_name": "Alice", "rsvp_status": "Attending", "max_guests": "not-a-number"},
         )
         args, _ = mock_phrases.insert_with_unique_phrase.call_args
         assert args[-1] == 0
@@ -135,7 +204,10 @@ def test_self_register_truncates_long_name(client, app):
         mock_services.invite_url.return_value = "https://example.com/"
         mock_services.qr_png_bytes.return_value = b"fake-png-bytes"
 
-        client.post("/self-register", data={"primary_name": long_name})
+        client.post(
+            "/self-register",
+            data={"primary_name": long_name, "rsvp_status": "Attending"},
+        )
         args, _ = mock_phrases.insert_with_unique_phrase.call_args
         assert len(args[1]) == 200
 
@@ -152,12 +224,15 @@ def test_self_register_sends_confirmation_email_when_email_given(client, app):
 
         client.post(
             "/self-register",
-            data={"primary_name": "Alice", "email": "alice@example.com"},
+            data={"primary_name": "Alice", "rsvp_status": "Attending", "email": "alice@example.com"},
         )
         mock_services.send_self_registration_email.assert_called_once()
 
         mock_services.send_self_registration_email.reset_mock()
-        client.post("/self-register", data={"primary_name": "Bob", "email": ""})
+        client.post(
+            "/self-register",
+            data={"primary_name": "Bob", "rsvp_status": "Declined", "email": ""},
+        )
         mock_services.send_self_registration_email.assert_not_called()
 
 
@@ -174,7 +249,7 @@ def test_self_register_email_failure_does_not_surface_to_guest(client, app):
 
         resp = client.post(
             "/self-register",
-            data={"primary_name": "Alice", "email": "alice@example.com"},
+            data={"primary_name": "Alice", "rsvp_status": "Attending", "email": "alice@example.com"},
         )
     assert resp.status_code == 200
     assert b"apple-sky-boat" in resp.data

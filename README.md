@@ -41,11 +41,14 @@ birthday" both match. Avoid picking exactly three common dictionary
 words, since that's indistinguishable from a real generated passcode.
 
 Anyone who types the configured phrase into the normal passcode box
-gets a short form (name, email, additional guests) instead of "not
-found." Submitting it creates a real invitee **immediately** — same
-as the admin's "Add a single guest" — and shows them their phrase,
-link, and QR code on screen, plus emails it to them if they gave an
-email. There's no separate approval step before access is granted:
+gets a short form (name, email, additional guests, attending/declining,
+and a notes field) instead of "not found." Submitting it creates a
+real invitee **immediately** with that RSVP already recorded — same
+as the admin's "Add a single guest" followed by the guest's own RSVP
+in one step — and shows them their phrase, link, and QR code on
+screen, plus emails it to them if they gave an email. They can revisit
+their link later to change their answer, same as any other guest.
+There's no separate approval step before access is granted:
 review is after the fact. Self-registered guests are flagged
 `(self-registered, pending review)` on the admin dashboard, with
 matching "Self-registered" and "Pending review" count tiles, and a

@@ -130,7 +130,14 @@ def self_register_submit():
     if not name:
         return render_template("self_register.html", error="Please tell us your name.")
 
+    status = request.form.get("rsvp_status", "")
+    if status not in VALID_STATUSES:
+        return render_template(
+            "self_register.html", error="Please choose whether you're attending."
+        )
+
     email = (request.form.get("email") or "").strip()[:320]
+    comments = request.form.get("comments", "").strip()[:2000]
 
     try:
         max_guests = int((request.form.get("max_guests") or "0").strip() or 0)
@@ -141,6 +148,12 @@ def self_register_submit():
     invitee_id, phrase = phrases.insert_with_unique_phrase(
         db.insert_self_invitee, name, email, max_guests
     )
+    # insert_self_invitee creates the row Pending with no notes (same
+    # shape as an admin-added guest); update_rsvp immediately records
+    # the status/notes given at signup, same call the guest's own
+    # edit link would make later, including the usual rsvp_history
+    # audit row.
+    db.update_rsvp(invitee_id, status, "", comments)
 
     url = services.invite_url(cfg["DOMAIN_NAME"], invitee_id)
     qr_data_uri = "data:image/png;base64," + base64.b64encode(
@@ -159,6 +172,7 @@ def self_register_submit():
     return render_template(
         "self_register_confirm.html",
         primary_name=name,
+        rsvp_status=status,
         phrase=phrase,
         url=url,
         qr_data_uri=qr_data_uri,
