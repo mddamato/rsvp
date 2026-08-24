@@ -9,7 +9,8 @@ CREATE TABLE IF NOT EXISTS invitees (
     max_guests INT NOT NULL DEFAULT 0,
     rsvp_status VARCHAR NOT NULL DEFAULT 'Pending',
     plus_one_details TEXT,
-    comments TEXT
+    comments TEXT,
+    origin VARCHAR NOT NULL DEFAULT 'admin' CHECK (origin IN ('admin', 'self'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_invitees_email ON invitees (lower(email));

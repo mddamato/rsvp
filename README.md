@@ -11,7 +11,8 @@ config/          central config: .env (values), nginx template, htpasswd
 app/             Flask application, schema, EFF wordlist, Dockerfile
 backup/          nightly pg_dump-to-S3 sidecar
 scripts/         Let's Encrypt bootstrap, cron example, admin creation,
-                 boot-time secrets fetch + app start (see Deploying)
+                 boot-time secrets fetch + app start (see Deploying),
+                 migrations/ (one-off schema changes for existing DBs)
 infra/           OpenTofu for EC2, security group, IAM, backup bucket
 tests/           pytest suite (run: python3 -m pytest tests/)
 ```
@@ -26,6 +27,43 @@ and an optional closing signature (e.g. "- The Smith Family") rendered
 near the bottom of the page, below the form. Only `EVENT_TITLE` has a
 default ("Our Celebration"); the rest are hidden if left unset. Admin
 pages don't show any of this.
+
+## Anonymous self-registration
+
+`ANONYMOUS_PHRASE` in `config/.env` (unset/blank by default) enables a
+second on-ramp for situations where the guest list isn't known ahead
+of time — a generic flyer, poster, or cards handed out somewhere like
+a school, all sharing one phrase instead of individual passcodes. Set
+it to any human phrase, e.g. `ANONYMOUS_PHRASE=Tonys third birthday`.
+Matching is case-insensitive, apostrophes are ignored, and extra
+whitespace is collapsed, so "tony's THIRD birthday" and "Tonys  third
+birthday" both match. Avoid picking exactly three common dictionary
+words, since that's indistinguishable from a real generated passcode.
+
+Anyone who types the configured phrase into the normal passcode box
+gets a short form (name, email, additional guests) instead of "not
+found." Submitting it creates a real invitee **immediately** — same
+as the admin's "Add a single guest" — and shows them their phrase,
+link, and QR code on screen, plus emails it to them if they gave an
+email. There's no separate approval step before access is granted:
+review is after the fact. Self-registered guests are flagged
+`(self-registered)` on the admin dashboard, with a matching count
+tile; rejecting one is just the existing Delete button.
+
+**Upgrading an existing deployment**: this feature adds an `origin`
+column to the `invitees` table. Fresh installs get it automatically
+from `app/schema.sql`, but `docker-entrypoint-initdb.d` only runs
+against an empty Postgres volume — it won't touch an existing database
+with real guest data. Run the one-time migration in
+`scripts/migrations/2026-08-23-add-invitee-origin.sql` against the
+live database **before** deploying this version of the app code (the
+new code's INSERT statements reference the column). See the comments
+in that file, or:
+```bash
+docker compose exec -T postgres sh -c 'PGPASSWORD="$POSTGRES_PASSWORD" pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB"' | gzip > /root/pre-origin-migration-backup.sql.gz  # optional extra backup
+docker compose exec -T postgres sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"' < scripts/migrations/2026-08-23-add-invitee-origin.sql
+```
+then proceed with the normal `git pull` + `sudo systemctl restart rsvp-app.service` redeploy.
 
 ## Theming
 
@@ -91,7 +129,11 @@ the next restart or reboot with no manual file copying.
    aws secretsmanager put-secret-value --secret-id rsvp-app/cf-cert --secret-string file://config/cloudflare_origin_server.crt
    aws secretsmanager put-secret-value --secret-id rsvp-app/cf-key --secret-string file://config/cloudflare_origin_server.key
    ```
-5. Connect via SSM Session Manager, clone this repo to `/opt/rsvp-app`
+5. Connect via SSM Session Manager, clone this repo to `/opt/rsvp-app`:
+   ```bash
+   sudo -s
+   cd /opt && git clone https://github.com/mddamato/rsvp.git rsvp-app
+   ```
 6. `sudo systemctl enable --now rsvp-app.service` — pulls the secrets
    just pushed into `config/` (via the `rsvp-secrets` unit it depends
    on), then brings the app up with `docker compose`. Both steps

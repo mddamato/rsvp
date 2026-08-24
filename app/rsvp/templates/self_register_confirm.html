@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block content %}
+<p class="lede">You're all set, {{ primary_name }}! Save this card or your emailed link -- you'll need it to RSVP or change your answer later.</p>
+<div class="print-card">
+  <img src="{{ qr_data_uri }}" alt="Your invitation QR code" width="240" height="240">
+  <p class="phrase-display">{{ phrase }}</p>
+  <p class="fine-print">{{ url }}</p>
+</div>
+{% if email_sent %}<p class="fine-print">We've also emailed this link to you.</p>{% endif %}
+<p class="fine-print"><a href="/">Back to RSVP</a></p>
+{% endblock %}

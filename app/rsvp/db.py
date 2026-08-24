@@ -90,17 +90,19 @@ def dashboard_counts():
               count(*) FILTER (WHERE rsvp_status = 'Declined') AS declined,
               count(*) FILTER (WHERE rsvp_status = 'Pending') AS pending,
               count(*) FILTER (WHERE comments IS NOT NULL AND comments <> '')
-                AS with_comments
+                AS with_comments,
+              count(*) FILTER (WHERE origin = 'self') AS self_registered
             FROM invitees
             """
         )
-        total, attending, declined, pending, with_comments = cur.fetchone()
+        total, attending, declined, pending, with_comments, self_registered = cur.fetchone()
         return {
             "total": total,
             "attending": attending,
             "declined": declined,
             "pending": pending,
             "with_comments": with_comments,
+            "self_registered": self_registered,
         }
 
 
@@ -154,16 +156,27 @@ def delete_invitee(invitee_id):
         return cur.rowcount > 0
 
 
-def insert_invitee(primary_name, email, max_guests, lookup_phrase):
+def insert_invitee(primary_name, email, max_guests, lookup_phrase, origin="admin"):
     """Insert one invitee. Raises psycopg2.errors.UniqueViolation on a
     phrase collision so the caller can regenerate and retry."""
     with get_conn() as conn, conn.cursor() as cur:
         cur.execute(
             """
-            INSERT INTO invitees (primary_name, email, max_guests, lookup_phrase)
-            VALUES (%s, %s, %s, %s)
+            INSERT INTO invitees (primary_name, email, max_guests, lookup_phrase, origin)
+            VALUES (%s, %s, %s, %s, %s)
             RETURNING id
             """,
-            (primary_name, email or None, max_guests, lookup_phrase),
+            (primary_name, email or None, max_guests, lookup_phrase, origin),
         )
         return cur.fetchone()[0]
+
+
+def insert_self_invitee(primary_name, email, max_guests, lookup_phrase):
+    """Thin wrapper around insert_invitee for the public self-registration
+    flow (anonymous-phrase flyer/poster signups). Always sets
+    origin='self' so admins can flag these rows for review on the
+    dashboard. Kept separate rather than passing origin through
+    phrases.insert_with_unique_phrase's *args, since that helper always
+    appends the generated phrase as the last positional argument --
+    threading origin through there would land in the wrong slot."""
+    return insert_invitee(primary_name, email, max_guests, lookup_phrase, origin="self")

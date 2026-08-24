@@ -1,4 +1,5 @@
 """Public guest-facing routes."""
+import base64
 import re
 import uuid
 
@@ -11,12 +12,14 @@ from flask import (
     url_for,
 )
 
-from . import db, services
+from . import db, phrases, services
 
 bp = Blueprint("public", __name__)
 
 VALID_STATUSES = {"Attending", "Declined"}
 PHRASE_RE = re.compile(r"^[a-z]+-[a-z]+-[a-z]+$")
+MAX_SELF_REGISTER_NAME_LEN = 200
+MAX_SELF_REGISTER_GUESTS = 20  # sanity cap on public input, not a security boundary
 
 
 def _honeypot_tripped(form):
@@ -55,9 +58,15 @@ def phrase_lookup():
     if _honeypot_tripped(request.form):
         return render_template("phrase_entry.html", error=None), 200
 
-    raw = request.form.get("phrase", "")
-    phrase = "-".join(raw.strip().lower().replace("_", "-").split())
-    phrase = re.sub(r"-+", "-", phrase)
+    phrase = phrases.normalize_phrase(request.form.get("phrase", ""))
+
+    anonymous_raw = current_app.config.get("ANONYMOUS_PHRASE", "")
+    if (
+        anonymous_raw
+        and phrase
+        and phrase == phrases.normalize_phrase(anonymous_raw)
+    ):
+        return render_template("self_register.html", error=None)
 
     if not PHRASE_RE.match(phrase):
         return render_template(
@@ -96,6 +105,65 @@ def submit_rsvp():
 
     db.update_rsvp(invitee_id, status, plus_ones, comments)
     return redirect(url_for("public.thanks"))
+
+
+@bp.post("/self-register")
+def self_register_submit():
+    """Public self-registration, reached only when a visitor's typed
+    phrase matched the configured ANONYMOUS_PHRASE (see phrase_lookup).
+    Structurally the public, unauthenticated equivalent of
+    routes_admin.add_invitee: creates a real invitee row immediately
+    (origin='self') and hands back the real credential (phrase/link/QR)
+    on screen and by email, instead of requiring admin approval first."""
+    if _honeypot_tripped(request.form):
+        return render_template("self_register.html", error=None), 200
+
+    cfg = current_app.config
+    anonymous_raw = cfg.get("ANONYMOUS_PHRASE", "")
+    if not anonymous_raw:
+        # Defense in depth: this endpoint is public and directly
+        # POST-able regardless of how the visitor got here; refuse to
+        # create anything if the feature is disabled.
+        return redirect(url_for("public.landing"))
+
+    name = (request.form.get("primary_name") or "").strip()[:MAX_SELF_REGISTER_NAME_LEN]
+    if not name:
+        return render_template("self_register.html", error="Please tell us your name.")
+
+    email = (request.form.get("email") or "").strip()[:320]
+
+    try:
+        max_guests = int((request.form.get("max_guests") or "0").strip() or 0)
+    except ValueError:
+        max_guests = 0
+    max_guests = max(0, min(max_guests, MAX_SELF_REGISTER_GUESTS))
+
+    invitee_id, phrase = phrases.insert_with_unique_phrase(
+        db.insert_self_invitee, name, email, max_guests
+    )
+
+    url = services.invite_url(cfg["DOMAIN_NAME"], invitee_id)
+    qr_data_uri = "data:image/png;base64," + base64.b64encode(
+        services.qr_png_bytes(url)
+    ).decode("ascii")
+
+    email_sent = bool(email and "@" in email)
+    if email_sent:
+        try:
+            services.send_self_registration_email(
+                cfg["AWS_REGION"], cfg["SES_SENDER_EMAIL"], email, url, phrase
+            )
+        except Exception:
+            current_app.logger.exception("SES send failed")
+
+    return render_template(
+        "self_register_confirm.html",
+        primary_name=name,
+        phrase=phrase,
+        url=url,
+        qr_data_uri=qr_data_uri,
+        email_sent=email_sent,
+    )
 
 
 @bp.get("/thanks")

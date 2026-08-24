@@ -35,3 +35,18 @@ def test_retry_gives_up():
 
     with pytest.raises(RuntimeError):
         phrases.insert_with_unique_phrase(always_collides, "Bob")
+
+
+def test_normalize_phrase_strips_apostrophes():
+    assert phrases.normalize_phrase("Tony's third birthday") == "tonys-third-birthday"
+    assert phrases.normalize_phrase("Tony’s third birthday") == "tonys-third-birthday"
+
+
+def test_normalize_phrase_matches_existing_inline_behavior():
+    assert phrases.normalize_phrase("  Apple   Sky_Boat ") == "apple-sky-boat"
+    assert phrases.normalize_phrase("APPLE-SKY-BOAT") == "apple-sky-boat"
+
+
+def test_normalize_phrase_handles_empty_and_none():
+    assert phrases.normalize_phrase("") == ""
+    assert phrases.normalize_phrase(None) == ""

@@ -31,6 +31,14 @@ server {
         proxy_set_header X-Forwarded-Proto http;
     }
 
+    location = /self-register {
+        limit_req zone=rsvp_limit burst=10 nodelay;
+        proxy_pass http://python_app:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Forwarded-Proto http;
+    }
+
     location / {
         proxy_pass http://python_app:8000;
         proxy_set_header Host $host;

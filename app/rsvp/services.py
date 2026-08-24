@@ -39,3 +39,29 @@ def send_recovery_email(region, sender, recipient, url, phrase):
             "Body": {"Text": {"Data": body}},
         },
     )
+
+
+def send_self_registration_email(region, sender, recipient, url, phrase):
+    """Send the self-registration confirmation email via SES, mirroring
+    send_recovery_email. Imported lazily so tests and local dev don't
+    need boto3 credentials."""
+    import boto3
+
+    client = boto3.client("ses", region_name=region)
+    body = (
+        "Hi,\n\n"
+        "Thanks for signing up! Here is your invitation link:\n"
+        f"{url}\n\n"
+        f"Your passcode, if you prefer to type it in: {phrase}\n\n"
+        "Hang onto this email -- you'll need your link or passcode to "
+        "RSVP or change your answer later.\n\n"
+        "See you there!"
+    )
+    client.send_email(
+        Source=sender,
+        Destination={"ToAddresses": [recipient]},
+        Message={
+            "Subject": {"Data": "Your invitation link"},
+            "Body": {"Text": {"Data": body}},
+        },
+    )

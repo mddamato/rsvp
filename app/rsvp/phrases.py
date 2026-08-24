@@ -4,6 +4,7 @@ Phrases look like `apple-sky-boat`. Collisions against the unique
 constraint on invitees.lookup_phrase are handled by regenerating,
 capped at MAX_RETRIES attempts.
 """
+import re
 import secrets
 from pathlib import Path
 
@@ -12,7 +13,24 @@ import psycopg2.errors
 WORDLIST_PATH = Path(__file__).resolve().parent.parent / "wordlist" / "eff_words.txt"
 MAX_RETRIES = 10
 
+_APOSTROPHES_RE = re.compile(r"[’']")
+_DASH_RE = re.compile(r"-+")
+
 _words = None
+
+
+def normalize_phrase(raw):
+    """Lowercase, strip, drop apostrophes, and collapse whitespace/
+    underscores into single hyphens. Used both for guest passcode
+    lookups and for comparing against the configured ANONYMOUS_PHRASE,
+    so both sides must normalize identically. Does not enforce word
+    count or restrict to letters-only -- callers that need the strict
+    3-word EFF-generated shape still apply PHRASE_RE on top."""
+    text = (raw or "").strip().lower()
+    text = _APOSTROPHES_RE.sub("", text)
+    text = text.replace("_", "-")
+    text = "-".join(text.split())
+    return _DASH_RE.sub("-", text)
 
 
 def load_words():

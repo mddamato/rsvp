@@ -14,6 +14,7 @@
   <div class="stat"><span class="stat-num">{{ counts.declined }}</span><span class="stat-label">Declined</span></div>
   <div class="stat"><span class="stat-num">{{ counts.pending }}</span><span class="stat-label">Pending</span></div>
   <div class="stat"><span class="stat-num">{{ counts.with_comments }}</span><span class="stat-label">With notes</span></div>
+  <div class="stat"><span class="stat-num">{{ counts.self_registered }}</span><span class="stat-label">Self-registered</span></div>
 </div>
 
 <form method="post" action="/admin/upload-csv" enctype="multipart/form-data" class="upload-row">
@@ -37,7 +38,7 @@
   <tbody>
   {% for g in invitees %}
     <tr>
-      <td>{{ g.primary_name }}</td>
+      <td>{{ g.primary_name }}{% if g.origin == 'self' %} <span class="fine-print">(self-registered)</span>{% endif %}</td>
       <td>{{ g.rsvp_status }}</td>
       <td>{{ g.plus_one_details or '' }}</td>
       <td>{{ g.comments or '' }}</td>
