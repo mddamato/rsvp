@@ -197,6 +197,7 @@ def test_admin_dashboard_flags_self_registered_rows(client, app):
         "lookup_phrase": "apple-sky-boat",
         "email": None,
         "origin": "self",
+        "reviewed": False,
     }
     counts = {
         "total": 1,
@@ -205,11 +206,70 @@ def test_admin_dashboard_flags_self_registered_rows(client, app):
         "pending": 1,
         "with_comments": 0,
         "self_registered": 1,
+        "pending_review": 1,
     }
     with patch("rsvp.routes_admin.db") as mock_db:
         mock_db.fetch_all_invitees.return_value = [self_registered_row]
         mock_db.dashboard_counts.return_value = counts
         resp = client.get("/admin/dashboard")
     assert resp.status_code == 200
-    assert b"self-registered" in resp.data
+    assert b"self-registered, pending review" in resp.data
     assert b">1<" in resp.data
+    assert b'action="/admin/confirm/' in resp.data
+
+
+def test_admin_dashboard_hides_confirm_button_once_reviewed(client, app):
+    _login(client, app)
+    reviewed_row = {
+        "id": uuid.uuid4(),
+        "primary_name": "Bob Example",
+        "rsvp_status": "Pending",
+        "max_guests": 0,
+        "plus_one_details": None,
+        "comments": None,
+        "lookup_phrase": "apple-sky-boat",
+        "email": None,
+        "origin": "self",
+        "reviewed": True,
+    }
+    counts = {
+        "total": 1,
+        "attending": 0,
+        "declined": 0,
+        "pending": 1,
+        "with_comments": 0,
+        "self_registered": 1,
+        "pending_review": 0,
+    }
+    with patch("rsvp.routes_admin.db") as mock_db:
+        mock_db.fetch_all_invitees.return_value = [reviewed_row]
+        mock_db.dashboard_counts.return_value = counts
+        resp = client.get("/admin/dashboard")
+    assert resp.status_code == 200
+    assert b"(self-registered)" in resp.data
+    assert b"pending review" not in resp.data
+    assert b'action="/admin/confirm/' not in resp.data
+
+
+def test_confirm_invitee_marks_reviewed(client, app):
+    _login(client, app)
+    invitee_id = uuid.uuid4()
+    with patch("rsvp.routes_admin.db") as mock_db:
+        mock_db.mark_invitee_reviewed.return_value = True
+        resp = client.post(f"/admin/confirm/{invitee_id}")
+    assert resp.status_code == 302
+    mock_db.mark_invitee_reviewed.assert_called_once_with(invitee_id)
+
+
+def test_confirm_invitee_requires_login(client):
+    resp = client.post(f"/admin/confirm/{uuid.uuid4()}")
+    assert resp.status_code == 302
+    assert "/admin/login" in resp.headers.get("Location", "")
+
+
+def test_confirm_invitee_rejects_bad_uuid(client, app):
+    _login(client, app)
+    with patch("rsvp.routes_admin.db") as mock_db:
+        resp = client.post("/admin/confirm/not-a-uuid")
+    assert resp.status_code == 302
+    mock_db.mark_invitee_reviewed.assert_not_called()

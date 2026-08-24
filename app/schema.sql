@@ -10,7 +10,8 @@ CREATE TABLE IF NOT EXISTS invitees (
     rsvp_status VARCHAR NOT NULL DEFAULT 'Pending',
     plus_one_details TEXT,
     comments TEXT,
-    origin VARCHAR NOT NULL DEFAULT 'admin' CHECK (origin IN ('admin', 'self'))
+    origin VARCHAR NOT NULL DEFAULT 'admin' CHECK (origin IN ('admin', 'self')),
+    reviewed BOOLEAN NOT NULL DEFAULT true
 );
 
 CREATE INDEX IF NOT EXISTS idx_invitees_email ON invitees (lower(email));

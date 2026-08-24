@@ -164,6 +164,24 @@ def delete_invitee(invitee_id):
     return redirect(url_for("admin.dashboard"))
 
 
+@bp.post("/confirm/<invitee_id>")
+@auth.login_required
+def confirm_invitee(invitee_id):
+    """Dismiss a self-registered guest's pending-review flag. They
+    already have full access (self-registration grants it
+    immediately) -- this is just admin bookkeeping."""
+    try:
+        parsed = uuid.UUID(invitee_id)
+    except ValueError:
+        return redirect(url_for("admin.dashboard"))
+
+    if db.mark_invitee_reviewed(parsed):
+        flash("Marked as reviewed.")
+    else:
+        flash("Guest not found.")
+    return redirect(url_for("admin.dashboard"))
+
+
 @bp.get("/card/<invitee_id>")
 @auth.login_required
 def card_view(invitee_id):

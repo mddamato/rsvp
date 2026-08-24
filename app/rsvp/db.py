@@ -91,11 +91,12 @@ def dashboard_counts():
               count(*) FILTER (WHERE rsvp_status = 'Pending') AS pending,
               count(*) FILTER (WHERE comments IS NOT NULL AND comments <> '')
                 AS with_comments,
-              count(*) FILTER (WHERE origin = 'self') AS self_registered
+              count(*) FILTER (WHERE origin = 'self') AS self_registered,
+              count(*) FILTER (WHERE origin = 'self' AND NOT reviewed) AS pending_review
             FROM invitees
             """
         )
-        total, attending, declined, pending, with_comments, self_registered = cur.fetchone()
+        total, attending, declined, pending, with_comments, self_registered, pending_review = cur.fetchone()
         return {
             "total": total,
             "attending": attending,
@@ -103,6 +104,7 @@ def dashboard_counts():
             "pending": pending,
             "with_comments": with_comments,
             "self_registered": self_registered,
+            "pending_review": pending_review,
         }
 
 
@@ -156,17 +158,27 @@ def delete_invitee(invitee_id):
         return cur.rowcount > 0
 
 
-def insert_invitee(primary_name, email, max_guests, lookup_phrase, origin="admin"):
+def mark_invitee_reviewed(invitee_id):
+    """Dismiss the dashboard's pending-review flag on a self-registered
+    invitee. Doesn't affect their access -- self-registration already
+    grants a real invite immediately; this is bookkeeping only.
+    Returns False if no such id."""
+    with get_conn() as conn, conn.cursor() as cur:
+        cur.execute("UPDATE invitees SET reviewed = true WHERE id = %s", (invitee_id,))
+        return cur.rowcount > 0
+
+
+def insert_invitee(primary_name, email, max_guests, lookup_phrase, origin="admin", reviewed=True):
     """Insert one invitee. Raises psycopg2.errors.UniqueViolation on a
     phrase collision so the caller can regenerate and retry."""
     with get_conn() as conn, conn.cursor() as cur:
         cur.execute(
             """
-            INSERT INTO invitees (primary_name, email, max_guests, lookup_phrase, origin)
-            VALUES (%s, %s, %s, %s, %s)
+            INSERT INTO invitees (primary_name, email, max_guests, lookup_phrase, origin, reviewed)
+            VALUES (%s, %s, %s, %s, %s, %s)
             RETURNING id
             """,
-            (primary_name, email or None, max_guests, lookup_phrase, origin),
+            (primary_name, email or None, max_guests, lookup_phrase, origin, reviewed),
         )
         return cur.fetchone()[0]
 
@@ -174,9 +186,12 @@ def insert_invitee(primary_name, email, max_guests, lookup_phrase, origin="admin
 def insert_self_invitee(primary_name, email, max_guests, lookup_phrase):
     """Thin wrapper around insert_invitee for the public self-registration
     flow (anonymous-phrase flyer/poster signups). Always sets
-    origin='self' so admins can flag these rows for review on the
-    dashboard. Kept separate rather than passing origin through
-    phrases.insert_with_unique_phrase's *args, since that helper always
-    appends the generated phrase as the last positional argument --
-    threading origin through there would land in the wrong slot."""
-    return insert_invitee(primary_name, email, max_guests, lookup_phrase, origin="self")
+    origin='self' and reviewed=False so admins can flag these rows for
+    review on the dashboard. Kept separate rather than passing origin
+    through phrases.insert_with_unique_phrase's *args, since that
+    helper always appends the generated phrase as the last positional
+    argument -- threading extra params through there would land in
+    the wrong slot."""
+    return insert_invitee(
+        primary_name, email, max_guests, lookup_phrase, origin="self", reviewed=False
+    )

@@ -47,21 +47,26 @@ as the admin's "Add a single guest" — and shows them their phrase,
 link, and QR code on screen, plus emails it to them if they gave an
 email. There's no separate approval step before access is granted:
 review is after the fact. Self-registered guests are flagged
-`(self-registered)` on the admin dashboard, with a matching count
-tile; rejecting one is just the existing Delete button.
+`(self-registered, pending review)` on the admin dashboard, with
+matching "Self-registered" and "Pending review" count tiles, and a
+Confirm button that dismisses the flag (bookkeeping only — it doesn't
+change their access, which they already have). Rejecting one entirely
+is just the existing Delete button.
 
-**Upgrading an existing deployment**: this feature adds an `origin`
-column to the `invitees` table. Fresh installs get it automatically
-from `app/schema.sql`, but `docker-entrypoint-initdb.d` only runs
-against an empty Postgres volume — it won't touch an existing database
-with real guest data. Run the one-time migration in
-`scripts/migrations/2026-08-23-add-invitee-origin.sql` against the
-live database **before** deploying this version of the app code (the
-new code's INSERT statements reference the column). See the comments
-in that file, or:
+**Upgrading an existing deployment**: this feature adds `origin` and
+`reviewed` columns to the `invitees` table. Fresh installs get them
+automatically from `app/schema.sql`, but `docker-entrypoint-initdb.d`
+only runs against an empty Postgres volume — it won't touch an existing database
+with real guest data. Run the one-time migrations in
+`scripts/migrations/` (in order — `2026-08-23-add-invitee-origin.sql`
+then `2026-08-24-add-invitee-reviewed.sql`) against the live database
+**before** deploying this version of the app code (the new code's
+INSERT statements reference these columns). See the comments in those
+files, or:
 ```bash
-docker compose exec -T postgres sh -c 'PGPASSWORD="$POSTGRES_PASSWORD" pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB"' | gzip > /root/pre-origin-migration-backup.sql.gz  # optional extra backup
+docker compose exec -T postgres sh -c 'PGPASSWORD="$POSTGRES_PASSWORD" pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB"' | gzip > /root/pre-migration-backup.sql.gz  # optional extra backup
 docker compose exec -T postgres sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"' < scripts/migrations/2026-08-23-add-invitee-origin.sql
+docker compose exec -T postgres sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"' < scripts/migrations/2026-08-24-add-invitee-reviewed.sql
 ```
 then proceed with the normal `git pull` + `sudo systemctl restart rsvp-app.service` redeploy.
 
