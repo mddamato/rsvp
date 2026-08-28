@@ -118,6 +118,17 @@ def submit_rsvp():
 
     guest_list = guests.guest_rows_from_form(request.form, invitee["max_guests"])
     db.update_rsvp(invitee_id, status, guests.serialize_guests(guest_list), comments)
+
+    if invitee.get("email"):
+        cfg = current_app.config
+        url = services.invite_url(cfg["DOMAIN_NAME"], invitee_id)
+        try:
+            services.send_rsvp_confirmation_email(
+                cfg, invitee["email"], url, invitee["lookup_phrase"], status, guest_list, comments
+            )
+        except Exception:
+            current_app.logger.exception("SES send failed")
+
     return redirect(url_for("public.thanks"))
 
 
@@ -177,9 +188,7 @@ def self_register_submit():
     email_sent = bool(email and "@" in email)
     if email_sent:
         try:
-            services.send_self_registration_email(
-                cfg["AWS_REGION"], cfg["SES_SENDER_EMAIL"], email, url, phrase
-            )
+            services.send_self_registration_email(cfg, email, url, phrase, status)
         except Exception:
             current_app.logger.exception("SES send failed")
 
@@ -246,13 +255,7 @@ def recover_submit():
             cfg = current_app.config
             url = services.invite_url(cfg["DOMAIN_NAME"], invitee["id"])
             try:
-                services.send_recovery_email(
-                    cfg["AWS_REGION"],
-                    cfg["SES_SENDER_EMAIL"],
-                    invitee["email"],
-                    url,
-                    invitee["lookup_phrase"],
-                )
+                services.send_recovery_email(cfg, invitee["email"], url, invitee["lookup_phrase"])
             except Exception:
                 current_app.logger.exception("SES send failed")
     return render_template("recover.html", submitted=True)

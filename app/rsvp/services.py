@@ -64,21 +64,41 @@ def event_image_bytes(path, max_width=EVENT_IMAGE_MAX_WIDTH):
     return result
 
 
-def send_recovery_email(region, sender, recipient, url, phrase):
+def _event_details_block(cfg):
+    """Plain-text block of the event's guest-facing text (title,
+    subheading, details paragraph, closing signature) -- the same
+    fields shown on the guest pages, minus the image. Appended to
+    every outbound email so recipients have something to reference
+    without opening the site again. Subheading/details/closing are
+    omitted if unset, same as on the pages themselves."""
+    lines = [cfg.get("EVENT_TITLE") or "Our Celebration"]
+    for key in ("EVENT_SUBHEADING", "EVENT_DETAILS", "EVENT_CLOSING"):
+        if cfg.get(key):
+            lines.append(cfg[key])
+    return "\n".join(lines)
+
+
+def _status_word(status):
+    return "Attending" if status == "Attending" else "Declining"
+
+
+def send_recovery_email(cfg, recipient, url, phrase):
     """Send the Tier-3 recovery email via SES. Imported lazily so tests
     and local dev don't need boto3 credentials."""
     import boto3
 
-    client = boto3.client("ses", region_name=region)
+    client = boto3.client("ses", region_name=cfg["AWS_REGION"])
     body = (
         "Hi,\n\n"
         "Here is your invitation link:\n"
         f"{url}\n\n"
         f"Your passcode, if you prefer to type it in: {phrase}\n\n"
-        "See you there!"
+        "See you there!\n\n"
+        "----------\n"
+        f"{_event_details_block(cfg)}"
     )
     client.send_email(
-        Source=sender,
+        Source=cfg["SES_SENDER_EMAIL"],
         Destination={"ToAddresses": [recipient]},
         Message={
             "Subject": {"Data": "Your invitation link"},
@@ -87,27 +107,62 @@ def send_recovery_email(region, sender, recipient, url, phrase):
     )
 
 
-def send_self_registration_email(region, sender, recipient, url, phrase):
+def send_self_registration_email(cfg, recipient, url, phrase, status):
     """Send the self-registration confirmation email via SES, mirroring
     send_recovery_email. Imported lazily so tests and local dev don't
     need boto3 credentials."""
     import boto3
 
-    client = boto3.client("ses", region_name=region)
+    client = boto3.client("ses", region_name=cfg["AWS_REGION"])
     body = (
         "Hi,\n\n"
-        "Thanks for signing up! Here is your invitation link:\n"
+        f"Thanks for signing up! We have you down as {_status_word(status)}.\n\n"
+        "Here is your invitation link:\n"
         f"{url}\n\n"
         f"Your passcode, if you prefer to type it in: {phrase}\n\n"
         "Hang onto this email -- you'll need your link or passcode to "
         "RSVP or change your answer later.\n\n"
-        "See you there!"
+        "See you there!\n\n"
+        "----------\n"
+        f"{_event_details_block(cfg)}"
     )
     client.send_email(
-        Source=sender,
+        Source=cfg["SES_SENDER_EMAIL"],
         Destination={"ToAddresses": [recipient]},
         Message={
             "Subject": {"Data": "Your invitation link"},
+            "Body": {"Text": {"Data": body}},
+        },
+    )
+
+
+def send_rsvp_confirmation_email(cfg, recipient, url, phrase, status, guest_list=None, comments=None):
+    """Send a confirmation whenever a guest submits or changes their
+    RSVP via their personal link (routes_public.submit_rsvp) -- covers
+    both admin-added and self-registered guests alike, and every
+    resubmission, not just the first. Imported lazily so tests and
+    local dev don't need boto3 credentials."""
+    import boto3
+
+    client = boto3.client("ses", region_name=cfg["AWS_REGION"])
+    lines = [f"Hi,\n\nWe've recorded your RSVP: we have you down as {_status_word(status)}."]
+    if guest_list:
+        names = ", ".join(
+            f"{g['name']} (child)" if g.get("child") else g["name"] for g in guest_list
+        )
+        lines.append(f"Bringing: {names}")
+    if comments:
+        lines.append(f"Your note: {comments}")
+    lines.append(f"Change your answer anytime:\n{url}")
+    lines.append(f"Your passcode, if you prefer to type it in: {phrase}")
+    lines.append("See you there!" if status == "Attending" else "Thanks for letting us know.")
+    lines.append(f"----------\n{_event_details_block(cfg)}")
+    body = "\n\n".join(lines)
+    client.send_email(
+        Source=cfg["SES_SENDER_EMAIL"],
+        Destination={"ToAddresses": [recipient]},
+        Message={
+            "Subject": {"Data": "Your RSVP confirmation"},
             "Body": {"Text": {"Data": body}},
         },
     )

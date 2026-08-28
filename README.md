@@ -300,6 +300,38 @@ overrides still work standalone:
 `docker compose -f docker-compose.yml -f docker-compose.cloudflare.yml up -d nginx`
 (don't combine with `docker-compose.http-only.yml`).
 
+## Emails
+
+All outbound mail goes through SES (`SES_SENDER_EMAIL`/`AWS_REGION`
+in `config/.env`) and needs the account out of the SES sandbox to
+reach real recipient addresses — see the SES console. Three triggers,
+and nothing else ever sends email:
+
+- **RSVP submit/update** (`POST /rsvp`, i.e. every time anyone —
+  admin-added or self-registered — submits or changes their answer
+  via their personal link): a confirmation stating their current
+  status (Attending/Declining), guests brought, and their note, if
+  any. Sent every time, not just on change. Only if the invitee has
+  an email on file — added by an admin, they won't unless the admin
+  set one.
+- **Self-registration** (`POST /self-register`): a welcome email with
+  their new link/phrase and the status they just chose. Only if they
+  filled in the optional email field.
+- **`/recover`** ("lost your card?"): resends an existing invitee's
+  link/phrase. Silent either way (same confirmation message whether
+  the email matched or not, to prevent enumeration) — you can't tell
+  from the UI whether one actually went out.
+
+Adding a guest (single or CSV), editing one, or an admin confirming a
+self-registered guest never sends anything.
+
+Every email ends with a plain-text block of the current
+`EVENT_TITLE`/`EVENT_SUBHEADING`/`EVENT_DETAILS`/`EVENT_CLOSING` (not
+the image) so recipients have the event info to reference without
+opening the site again. SES failures are always caught and logged
+(`docker logs rsvp_app`, look for "SES send failed"), never surfaced
+to the guest or allowed to break the RSVP/registration itself.
+
 ## Bulk guest upload
 
 CSV with a header row, columns `primary_name,email,max_guests`. Upload

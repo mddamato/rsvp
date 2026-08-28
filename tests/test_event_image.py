@@ -99,6 +99,18 @@ def test_phrase_entry_page_hides_event_image_even_when_configured(client, app):
     assert b'class="event-image"' not in resp.data
 
 
+def test_recover_page_hides_event_details(client, app):
+    # /recover is reachable straight from the passcode page's "Lost
+    # your card?" link, before any proof of a valid passcode either.
+    app.config["EVENT_DETAILS_IMAGE"] = "invite.png"
+    app.config["EVENT_SUBHEADING"] = "Saturday, June 5, 2027"
+    app.config["EVENT_DETAILS"] = "123 Secret Ave, Anytown"
+    resp = client.get("/recover")
+    assert b'class="event-image"' not in resp.data
+    assert b"Saturday, June 5, 2027" not in resp.data
+    assert b"123 Secret Ave, Anytown" not in resp.data
+
+
 def test_phrase_entry_page_hides_subheading_and_details(client, app):
     app.config["EVENT_SUBHEADING"] = "Saturday, June 5, 2027"
     app.config["EVENT_DETAILS"] = "123 Secret Ave, Anytown"
