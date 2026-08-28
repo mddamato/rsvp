@@ -256,6 +256,17 @@ a { color: var(--color-accent); }
   margin: 0.75rem 0 0.25rem;
 }
 
+.link-copy-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: calc(var(--space) * 1.5);
+}
+.invite-link { font-size: 0.85rem; word-break: break-all; }
+.copy-link { flex-shrink: 0; white-space: nowrap; }
+
 @media print {
   body { padding: 0; background: #fff; }
   .card { border: none; }

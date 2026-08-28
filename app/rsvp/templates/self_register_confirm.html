@@ -7,7 +7,10 @@
 <div class="print-card">
   <img src="{{ qr_data_uri }}" alt="Your invitation QR code" width="240" height="240">
   <p class="phrase-display">{{ phrase }}</p>
-  <p class="fine-print">{{ url }}</p>
+  <div class="link-copy-row">
+    <a href="{{ url }}" class="invite-link">{{ url }}</a>
+    <button type="button" class="link-button copy-link" data-copy-text="{{ url }}" data-copy-label="Copy link">Copy link</button>
+  </div>
 </div>
 {% if email_sent %}<p class="fine-print">We've also emailed this link to you -- check your spam/junk folder if you don't see it.</p>{% endif %}
 <p class="fine-print"><a href="/">Back to RSVP</a></p>

@@ -126,6 +126,9 @@ def test_self_register_creates_invitee_with_origin_self(client, app):
     assert b"apple-sky-boat" in resp.data
     assert b"data:image/png;base64," in resp.data
     assert b"attending" in resp.data.lower()
+    url = f"https://example.com/?code={fake_id}"
+    assert f'<a href="{url}" class="invite-link">{url}</a>'.encode() in resp.data
+    assert f'data-copy-text="{url}"'.encode() in resp.data
 
 
 def test_self_register_requires_rsvp_status(client, app):

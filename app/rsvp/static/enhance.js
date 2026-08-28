@@ -15,6 +15,42 @@ document.addEventListener('submit', function (e) {
   }
 });
 
+// Copy-to-clipboard buttons (data-copy-text). Progressive enhancement
+// only -- the link sitting next to the button is a real <a href> and
+// works fine with JS disabled; the button just does nothing without it.
+document.querySelectorAll('[data-copy-text]').forEach(function (btn) {
+  var label = btn.dataset.copyLabel || btn.textContent;
+  var resetTimer;
+  function showResult(text) {
+    clearTimeout(resetTimer);
+    btn.textContent = text;
+    resetTimer = setTimeout(function () { btn.textContent = label; }, 1500);
+  }
+  btn.addEventListener('click', function () {
+    var text = btn.dataset.copyText;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text)
+        .then(function () { showResult('Copied!'); })
+        .catch(function () { showResult('Copy failed'); });
+      return;
+    }
+    // Fallback for browsers without the async Clipboard API.
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    try {
+      document.execCommand('copy');
+      showResult('Copied!');
+    } catch (e) {
+      showResult('Copy failed');
+    }
+    document.body.removeChild(ta);
+  });
+});
+
 // Admin dashboard "select all" checkbox: toggles every per-row
 // checkbox. Purely a convenience -- without JS, guests can still be
 // checked one at a time and every bulk action still works.
