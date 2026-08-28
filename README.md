@@ -41,20 +41,37 @@ birthday" both match. Avoid picking exactly three common dictionary
 words, since that's indistinguishable from a real generated passcode.
 
 Anyone who types the configured phrase into the normal passcode box
-gets a short form (name, email, additional guests, attending/declining,
-and a notes field) instead of "not found." Submitting it creates a
-real invitee **immediately** with that RSVP already recorded — same
-as the admin's "Add a single guest" followed by the guest's own RSVP
-in one step — and shows them their phrase, link, and QR code on
-screen, plus emails it to them if they gave an email. They can revisit
-their link later to change their answer, same as any other guest.
-There's no separate approval step before access is granted:
+gets a short form (name, email, attending/declining, and a notes
+field) instead of "not found." Submitting it creates a real invitee
+**immediately** with that RSVP already recorded — same as the admin's
+"Add a single guest" followed by the guest's own RSVP in one step —
+and shows them their phrase, link, and QR code on screen, plus emails
+it to them if they gave an email. They can revisit their link later
+to change their answer, same as any other guest. There's no separate
+approval step before access is granted:
 review is after the fact. Self-registered guests are flagged
 `(self-registered, pending review)` on the admin dashboard, with
 matching "Self-registered" and "Pending review" count tiles, and a
 Confirm button that dismisses the flag (bookkeeping only — it doesn't
 change their access, which they already have). Rejecting one entirely
 is just the existing Delete button.
+
+Self-registration is solo-only by default. Set
+`SELF_REGISTER_MULTIPLE_GUESTS=1` to let self-registrants bring
+additional guests too, using the same per-guest "Add guest" UI
+described below.
+
+### Plus-one guests
+
+Guests joining an invitee (whether entered by the invitee on their
+RSVP form, or by a self-registrant when
+`SELF_REGISTER_MULTIPLE_GUESTS=1`) are captured one at a time: a name
+box plus a "child (6 or under)" checkbox per guest, with an "Add
+guest" button revealing one more slot at a time, up to the number
+allowed. This replaces the old single comma-separated text field. The
+page works fully without JavaScript — every slot is rendered from the
+start; "Add guest" just tidies the initial view by hiding slots
+beyond however many are already filled, revealing more on click.
 
 **Upgrading an existing deployment**: this feature adds `origin` and
 `reviewed` columns to the `invitees` table. Fresh installs get them

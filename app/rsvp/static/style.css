@@ -177,6 +177,13 @@ a { color: var(--color-accent); }
   outline-offset: 2px;
 }
 
+/* Per-guest name + "child" rows under the "Add guest" UI */
+.guest-rows { margin-top: 0.5rem; }
+.guest-row { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; }
+.guest-row input[type="text"] { flex: 1; }
+.guest-child { display: flex; align-items: center; gap: 0.3rem; font-size: 0.85rem; white-space: nowrap; margin-top: 0; }
+.add-guest { margin-top: 0.25rem; }
+
 /* Honeypot: visually removed, still in the DOM for bots */
 .hp {
   position: absolute !important;

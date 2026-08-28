@@ -12,7 +12,7 @@ from flask import (
     url_for,
 )
 
-from . import db, phrases, services
+from . import db, guests, phrases, services
 
 bp = Blueprint("public", __name__)
 
@@ -90,7 +90,6 @@ def submit_rsvp():
 
     invitee_id = _parse_uuid(request.form.get("invitee_id"))
     status = request.form.get("rsvp_status", "")
-    plus_ones = request.form.get("plus_one_details", "").strip()[:1000]
     comments = request.form.get("comments", "").strip()[:2000]
 
     if not invitee_id or status not in VALID_STATUSES:
@@ -100,10 +99,8 @@ def submit_rsvp():
     if not invitee:
         return redirect(url_for("public.landing"))
 
-    if invitee["max_guests"] == 0:
-        plus_ones = ""
-
-    db.update_rsvp(invitee_id, status, plus_ones, comments)
+    guest_list = guests.guest_rows_from_form(request.form, invitee["max_guests"])
+    db.update_rsvp(invitee_id, status, guests.serialize_guests(guest_list), comments)
     return redirect(url_for("public.thanks"))
 
 
@@ -139,21 +136,21 @@ def self_register_submit():
     email = (request.form.get("email") or "").strip()[:320]
     comments = request.form.get("comments", "").strip()[:2000]
 
-    try:
-        max_guests = int((request.form.get("max_guests") or "0").strip() or 0)
-    except ValueError:
-        max_guests = 0
-    max_guests = max(0, min(max_guests, MAX_SELF_REGISTER_GUESTS))
+    if cfg.get("SELF_REGISTER_MULTIPLE_GUESTS"):
+        guest_list = guests.guest_rows_from_form(request.form, MAX_SELF_REGISTER_GUESTS)
+    else:
+        guest_list = []
+    max_guests = len(guest_list)
 
     invitee_id, phrase = phrases.insert_with_unique_phrase(
         db.insert_self_invitee, name, email, max_guests
     )
     # insert_self_invitee creates the row Pending with no notes (same
     # shape as an admin-added guest); update_rsvp immediately records
-    # the status/notes given at signup, same call the guest's own
-    # edit link would make later, including the usual rsvp_history
-    # audit row.
-    db.update_rsvp(invitee_id, status, "", comments)
+    # the status/notes/guests given at signup, same call the guest's
+    # own edit link would make later, including the usual
+    # rsvp_history audit row.
+    db.update_rsvp(invitee_id, status, guests.serialize_guests(guest_list), comments)
 
     url = services.invite_url(cfg["DOMAIN_NAME"], invitee_id)
     qr_data_uri = "data:image/png;base64," + base64.b64encode(
@@ -173,6 +170,7 @@ def self_register_submit():
         "self_register_confirm.html",
         primary_name=name,
         rsvp_status=status,
+        guest_list=guest_list,
         phrase=phrase,
         url=url,
         qr_data_uri=qr_data_uri,

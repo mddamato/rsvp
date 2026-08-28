@@ -18,6 +18,7 @@ def create_app(test_config=None):
         EVENT_DETAILS=os.environ.get("EVENT_DETAILS", ""),
         EVENT_CLOSING=os.environ.get("EVENT_CLOSING", ""),
         ANONYMOUS_PHRASE=os.environ.get("ANONYMOUS_PHRASE", ""),
+        SELF_REGISTER_MULTIPLE_GUESTS=os.environ.get("SELF_REGISTER_MULTIPLE_GUESTS", "0") == "1",
         SESSION_COOKIE_SECURE=os.environ.get("FLASK_DEBUG") != "1",
         SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SAMESITE="Lax",
@@ -27,9 +28,10 @@ def create_app(test_config=None):
     if test_config:
         app.config.update(test_config)
 
-    from . import routes_public, routes_admin
+    from . import guests, routes_public, routes_admin
 
     app.register_blueprint(routes_public.bp)
     app.register_blueprint(routes_admin.bp)
+    app.jinja_env.filters["parse_guests"] = guests.parse_guests
 
     return app

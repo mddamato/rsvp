@@ -41,7 +41,7 @@
     <tr>
       <td>{{ g.primary_name }}{% if g.origin == 'self' %} <span class="fine-print">(self-registered{% if not g.reviewed %}, pending review{% endif %})</span>{% endif %}</td>
       <td>{{ g.rsvp_status }}</td>
-      <td>{{ g.plus_one_details or '' }}</td>
+      <td>{% for guest in g.plus_one_details | parse_guests %}{{ guest.name }}{% if guest.child %} (child){% endif %}{% if not loop.last %}, {% endif %}{% endfor %}</td>
       <td>{{ g.comments or '' }}</td>
       <td><a href="/admin/card/{{ g.id }}">View card</a></td>
       <td><a href="/admin/edit/{{ g.id }}">Edit</a></td>

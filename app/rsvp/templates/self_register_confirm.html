@@ -1,6 +1,9 @@
 {% extends "base.html" %}
 {% block content %}
 <p class="lede">You're all set, {{ primary_name }}! We've recorded you as <strong>{{ "attending" if rsvp_status == "Attending" else "declining" }}</strong>. Save this card or your emailed link -- you can use it to change your answer later if you need to.</p>
+{% if guest_list %}
+<p class="fine-print">Bringing: {% for g in guest_list %}{{ g.name }}{% if g.child %} (child){% endif %}{% if not loop.last %}, {% endif %}{% endfor %}</p>
+{% endif %}
 <div class="print-card">
   <img src="{{ qr_data_uri }}" alt="Your invitation QR code" width="240" height="240">
   <p class="phrase-display">{{ phrase }}</p>

@@ -84,6 +84,8 @@ def test_self_register_creates_invitee_with_origin_self(client, app):
             data={
                 "primary_name": " Alice Example ",
                 "email": "",
+                # SELF_REGISTER_MULTIPLE_GUESTS is off by default, so this
+                # is ignored entirely -- covered explicitly below.
                 "max_guests": "2",
                 "rsvp_status": "Attending",
             },
@@ -91,9 +93,9 @@ def test_self_register_creates_invitee_with_origin_self(client, app):
 
     assert resp.status_code == 200
     mock_phrases.insert_with_unique_phrase.assert_called_once_with(
-        mock_db.insert_self_invitee, "Alice Example", "", 2
+        mock_db.insert_self_invitee, "Alice Example", "", 0
     )
-    mock_db.update_rsvp.assert_called_once_with(fake_id, "Attending", "", "")
+    mock_db.update_rsvp.assert_called_once_with(fake_id, "Attending", "[]", "")
     assert b"apple-sky-boat" in resp.data
     assert b"data:image/png;base64," in resp.data
     assert b"attending" in resp.data.lower()
@@ -137,7 +139,7 @@ def test_self_register_records_notes_and_declined_status(client, app):
         )
 
     assert resp.status_code == 200
-    mock_db.update_rsvp.assert_called_once_with(fake_id, "Declined", "", "Can't make it, sorry!")
+    mock_db.update_rsvp.assert_called_once_with(fake_id, "Declined", "[]", "Can't make it, sorry!")
     assert b"declining" in resp.data.lower()
 
 
@@ -161,7 +163,8 @@ def test_self_register_truncates_comments(client, app):
     assert len(args[-1]) == 2000
 
 
-def test_self_register_clamps_max_guests(client, app):
+def test_self_register_guests_ignored_when_multiple_guests_disabled(client, app):
+    # SELF_REGISTER_MULTIPLE_GUESTS is off by default in the test fixture.
     app.config["ANONYMOUS_PHRASE"] = "Tonys third birthday"
     fake_id = uuid.uuid4()
     with patch("rsvp.routes_public.db"), patch(
@@ -173,24 +176,71 @@ def test_self_register_clamps_max_guests(client, app):
 
         client.post(
             "/self-register",
-            data={"primary_name": "Alice", "rsvp_status": "Attending", "max_guests": "999"},
-        )
-        args, _ = mock_phrases.insert_with_unique_phrase.call_args
-        assert args[-1] == 20
-
-        client.post(
-            "/self-register",
-            data={"primary_name": "Alice", "rsvp_status": "Attending", "max_guests": "-5"},
+            data={
+                "primary_name": "Alice",
+                "rsvp_status": "Attending",
+                "guest_name_1": "Bob",
+                "guest_name_2": "Sue",
+            },
         )
         args, _ = mock_phrases.insert_with_unique_phrase.call_args
         assert args[-1] == 0
 
-        client.post(
+
+def test_self_register_records_guests_when_multiple_guests_enabled(client, app):
+    app.config["ANONYMOUS_PHRASE"] = "Tonys third birthday"
+    app.config["SELF_REGISTER_MULTIPLE_GUESTS"] = True
+    fake_id = uuid.uuid4()
+    with patch("rsvp.routes_public.db") as mock_db, patch(
+        "rsvp.routes_public.phrases"
+    ) as mock_phrases, patch("rsvp.routes_public.services") as mock_services:
+        mock_phrases.insert_with_unique_phrase.return_value = (fake_id, "apple-sky-boat")
+        mock_services.invite_url.return_value = "https://example.com/"
+        mock_services.qr_png_bytes.return_value = b"fake-png-bytes"
+
+        resp = client.post(
             "/self-register",
-            data={"primary_name": "Alice", "rsvp_status": "Attending", "max_guests": "not-a-number"},
+            data={
+                "primary_name": "Alice",
+                "rsvp_status": "Attending",
+                "guest_name_1": "Bob Smith",
+                "guest_child_1": "on",
+                "guest_name_2": "Sue Smith",
+                "guest_name_3": "",  # blank slot, should be dropped
+            },
         )
-        args, _ = mock_phrases.insert_with_unique_phrase.call_args
-        assert args[-1] == 0
+
+    assert resp.status_code == 200
+    mock_phrases.insert_with_unique_phrase.assert_called_once_with(
+        mock_db.insert_self_invitee, "Alice", "", 2
+    )
+    mock_db.update_rsvp.assert_called_once_with(
+        fake_id,
+        "Attending",
+        '[{"name": "Bob Smith", "child": true}, {"name": "Sue Smith", "child": false}]',
+        "",
+    )
+    assert b"Bob Smith (child), Sue Smith" in resp.data
+
+
+def test_self_register_guest_rows_capped_at_max_self_register_guests(client, app):
+    app.config["ANONYMOUS_PHRASE"] = "Tonys third birthday"
+    app.config["SELF_REGISTER_MULTIPLE_GUESTS"] = True
+    fake_id = uuid.uuid4()
+    data = {"primary_name": "Alice", "rsvp_status": "Attending"}
+    data["guest_name_21"] = "Should be ignored"  # beyond MAX_SELF_REGISTER_GUESTS (20)
+    with patch("rsvp.routes_public.db") as mock_db, patch(
+        "rsvp.routes_public.phrases"
+    ) as mock_phrases, patch("rsvp.routes_public.services") as mock_services:
+        mock_phrases.insert_with_unique_phrase.return_value = (fake_id, "apple-sky-boat")
+        mock_services.invite_url.return_value = "https://example.com/"
+        mock_services.qr_png_bytes.return_value = b"fake-png-bytes"
+
+        client.post("/self-register", data=data)
+
+    mock_phrases.insert_with_unique_phrase.assert_called_once_with(
+        mock_db.insert_self_invitee, "Alice", "", 0
+    )
 
 
 def test_self_register_truncates_long_name(client, app):
