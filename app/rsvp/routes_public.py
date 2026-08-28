@@ -125,7 +125,8 @@ def submit_rsvp():
     guest_list = guests.guest_rows_from_form(request.form, invitee["max_guests"])
     db.update_rsvp(invitee_id, status, guests.serialize_guests(guest_list), comments, email)
 
-    if email and "@" in email:
+    email_sent = bool(email and "@" in email)
+    if email_sent:
         cfg = current_app.config
         url = services.invite_url(cfg["DOMAIN_NAME"], invitee_id)
         try:
@@ -135,7 +136,7 @@ def submit_rsvp():
         except Exception:
             current_app.logger.exception("SES send failed")
 
-    return redirect(url_for("public.thanks"))
+    return redirect(url_for("public.thanks", emailed=1 if email_sent else None))
 
 
 @bp.post("/self-register")
@@ -223,7 +224,7 @@ def self_register_submit():
 
 @bp.get("/thanks")
 def thanks():
-    return render_template("thanks.html")
+    return render_template("thanks.html", emailed=request.args.get("emailed") == "1")
 
 
 @bp.get("/event-image")

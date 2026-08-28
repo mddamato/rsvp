@@ -4,5 +4,6 @@
 {% block event_image %}{% endblock %}
 {% block content %}
 <p class="lede">Thank you! Your RSVP is in.</p>
+{% if emailed %}<p class="fine-print">We've also emailed you a confirmation -- check your spam/junk folder if you don't see it.</p>{% endif %}
 <p class="fine-print">Need to change your answer? Just scan your card or enter your passcode again.</p>
 {% endblock %}
