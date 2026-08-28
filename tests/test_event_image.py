@@ -68,10 +68,45 @@ def test_event_image_route_ignores_directory_traversal(client, app, tmp_path):
     assert resp.status_code == 404
 
 
-def test_guest_pages_show_image_when_configured(client, app):
+def test_phrase_entry_page_hides_event_image_even_when_configured(client, app):
+    # The passcode page is reachable by anyone, before they've proven
+    # they know a valid phrase/link -- must not leak event details.
     app.config["EVENT_DETAILS_IMAGE"] = "invite.png"
     resp = client.get("/")
+    assert b'class="event-image"' not in resp.data
+
+
+def test_phrase_entry_page_hides_subheading_and_details(client, app):
+    app.config["EVENT_SUBHEADING"] = "Saturday, June 5, 2027"
+    app.config["EVENT_DETAILS"] = "123 Secret Ave, Anytown"
+    resp = client.get("/")
+    assert b"Saturday, June 5, 2027" not in resp.data
+    assert b"123 Secret Ave, Anytown" not in resp.data
+
+
+def test_rsvp_form_still_shows_image_subheading_and_details(client, app):
+    # Once a visitor has proven they know a valid code/phrase, the
+    # full event info is fine to show -- only the pre-auth passcode
+    # page suppresses it.
+    invitee = {
+        "id": "5f0c9c1e-0000-0000-0000-000000000000",
+        "primary_name": "Alice Example",
+        "rsvp_status": "Pending",
+        "max_guests": 0,
+        "plus_one_details": None,
+        "comments": None,
+        "lookup_phrase": "apple-sky-boat",
+        "email": None,
+    }
+    app.config["EVENT_DETAILS_IMAGE"] = "invite.png"
+    app.config["EVENT_SUBHEADING"] = "Saturday, June 5, 2027"
+    app.config["EVENT_DETAILS"] = "123 Secret Ave, Anytown"
+    with patch("rsvp.routes_public.db") as mock_db:
+        mock_db.fetch_invitee_by_id.return_value = invitee
+        resp = client.get(f"/?code={invitee['id']}")
     assert b'class="event-image"' in resp.data
+    assert b"Saturday, June 5, 2027" in resp.data
+    assert b"123 Secret Ave, Anytown" in resp.data
 
 
 def test_guest_pages_hide_image_when_unconfigured(client):
