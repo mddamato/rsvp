@@ -210,14 +210,21 @@ def qr_image(invitee_id):
     return Response(png, mimetype="image/png")
 
 
+def _register_url(cfg):
+    """The token makes /register (a static, otherwise-guessable path)
+    unreachable to a blind bot -- only a link/QR generated here
+    carries a valid one. See services.register_token."""
+    token = services.register_token(cfg["SECRET_KEY"])
+    return f"https://{cfg['DOMAIN_NAME']}/register?t={token}"
+
+
 @bp.get("/register-qr")
 @auth.login_required
 def register_qr():
     """QR code PNG for the direct self-registration entry point
     (public.register_landing) -- for handing out to anonymous people,
     no 3-word phrase needed."""
-    url = f"https://{current_app.config['DOMAIN_NAME']}/register"
-    png = services.qr_png_bytes(url)
+    png = services.qr_png_bytes(_register_url(current_app.config))
     return Response(png, mimetype="image/png")
 
 
@@ -225,5 +232,4 @@ def register_qr():
 @auth.login_required
 def register_card():
     """Print-ready view of the self-registration QR code."""
-    url = f"https://{current_app.config['DOMAIN_NAME']}/register"
-    return render_template("admin_register_card.html", url=url)
+    return render_template("admin_register_card.html", url=_register_url(current_app.config))

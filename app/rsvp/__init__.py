@@ -36,9 +36,13 @@ def create_app(test_config=None):
     app.jinja_env.filters["parse_guests"] = guests.parse_guests
 
     # Computed once (not per-request) and injected into every template
-    # automatically, so base.html can build a working /event-image URL
-    # without every render_template() call needing to pass it explicitly.
+    # automatically, so a template can reference these without every
+    # render_template() call needing to pass them explicitly -- notably
+    # so self_register.html gets a valid register_token whether it was
+    # reached by typing the correct phrase or via a tokened /register
+    # link, with no special-casing needed per entry point.
     image_token = services.event_image_token(app.config["SECRET_KEY"])
-    app.context_processor(lambda: {"event_image_token": image_token})
+    reg_token = services.register_token(app.config["SECRET_KEY"])
+    app.context_processor(lambda: {"event_image_token": image_token, "register_token": reg_token})
 
     return app

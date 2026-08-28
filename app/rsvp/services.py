@@ -23,6 +23,20 @@ def event_image_token(secret_key):
     return hmac.new(secret_key.encode(), b"event-image", hashlib.sha256).hexdigest()[:16]
 
 
+def register_token(secret_key):
+    """Same bearer-token model as event_image_token, but gating the
+    direct /register self-registration entry point (and its
+    POST /self-register submission) instead. /register exists so a QR
+    on a flyer can skip the phrase entirely -- but the path itself is
+    static and guessable, so without this a bot could reach the form
+    (and its confirmation page, both of which show full event details)
+    without ever having seen the actual QR or knowing the phrase.
+    Embedded in the QR/URL the admin dashboard generates, and injected
+    into every template render so a visitor who typed the correct
+    phrase instead of scanning the QR still gets a valid one."""
+    return hmac.new(secret_key.encode(), b"register", hashlib.sha256).hexdigest()[:16]
+
+
 def qr_png_bytes(url):
     qr = qrcode.QRCode(box_size=10, border=2)
     qr.add_data(url)

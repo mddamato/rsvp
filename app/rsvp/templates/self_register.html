@@ -4,6 +4,7 @@
 {% if error %}<p class="notice">{{ error }}</p>{% endif %}
 <form method="post" action="/self-register">
   <input type="text" name="honeypot" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true">
+  <input type="hidden" name="t" value="{{ register_token }}">
   <label for="primary_name">Name</label>
   <input type="text" id="primary_name" name="primary_name" required>
   <label for="email">Email (optional, so we can send your link)</label>

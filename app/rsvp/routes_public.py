@@ -61,10 +61,15 @@ def register_landing():
     """Direct entry point for the self-registration QR code (see
     admin.register_qr/admin.register_card) -- skips the phrase-entry
     step entirely, for handing out to anonymous people who have no
-    3-word phrase to type. Same defense-in-depth as
-    self_register_submit: nothing useful to show if the feature is
-    off."""
+    3-word phrase to type. Requires the token embedded in that QR/URL
+    (not just the feature being enabled) -- /register is otherwise a
+    static, guessable path that would let a bot reach the form (and
+    its event-details-showing confirmation page) without ever having
+    seen the actual QR or knowing the phrase."""
     if not current_app.config.get("ANONYMOUS_PHRASE"):
+        return redirect(url_for("public.landing"))
+    expected_token = services.register_token(current_app.config["SECRET_KEY"])
+    if not hmac.compare_digest(request.args.get("t", ""), expected_token):
         return redirect(url_for("public.landing"))
     return render_template("self_register.html", error=None)
 
@@ -135,11 +140,12 @@ def submit_rsvp():
 @bp.post("/self-register")
 def self_register_submit():
     """Public self-registration, reached only when a visitor's typed
-    phrase matched the configured ANONYMOUS_PHRASE (see phrase_lookup).
-    Structurally the public, unauthenticated equivalent of
-    routes_admin.add_invitee: creates a real invitee row immediately
-    (origin='self') and hands back the real credential (phrase/link/QR)
-    on screen and by email, instead of requiring admin approval first."""
+    phrase matched the configured ANONYMOUS_PHRASE (see phrase_lookup)
+    or came through a validly-tokened /register link. Structurally the
+    public, unauthenticated equivalent of routes_admin.add_invitee:
+    creates a real invitee row immediately (origin='self') and hands
+    back the real credential (phrase/link/QR) on screen and by email,
+    instead of requiring admin approval first."""
     if _honeypot_tripped(request.form):
         return render_template("self_register.html", error=None), 200
 
@@ -149,6 +155,16 @@ def self_register_submit():
         # Defense in depth: this endpoint is public and directly
         # POST-able regardless of how the visitor got here; refuse to
         # create anything if the feature is disabled.
+        return redirect(url_for("public.landing"))
+
+    # The register_token hidden field is injected into every render of
+    # self_register.html automatically (see the context processor in
+    # __init__.py), whether that render came from a phrase match or a
+    # tokened /register link -- so a legitimate submission always
+    # carries the right value, and this only blocks a bot POSTing here
+    # directly without ever having fetched the form.
+    expected_token = services.register_token(cfg["SECRET_KEY"])
+    if not hmac.compare_digest(request.form.get("t", ""), expected_token):
         return redirect(url_for("public.landing"))
 
     name = (request.form.get("primary_name") or "").strip()[:MAX_SELF_REGISTER_NAME_LEN]
