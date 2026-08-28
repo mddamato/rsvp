@@ -113,6 +113,7 @@ def submit_rsvp():
     invitee_id = _parse_uuid(request.form.get("invitee_id"))
     status = request.form.get("rsvp_status", "")
     comments = request.form.get("comments", "").strip()[:2000]
+    email = (request.form.get("email") or "").strip()[:320]
 
     if not invitee_id or status not in VALID_STATUSES:
         return redirect(url_for("public.landing"))
@@ -122,14 +123,14 @@ def submit_rsvp():
         return redirect(url_for("public.landing"))
 
     guest_list = guests.guest_rows_from_form(request.form, invitee["max_guests"])
-    db.update_rsvp(invitee_id, status, guests.serialize_guests(guest_list), comments)
+    db.update_rsvp(invitee_id, status, guests.serialize_guests(guest_list), comments, email)
 
-    if invitee.get("email"):
+    if email and "@" in email:
         cfg = current_app.config
         url = services.invite_url(cfg["DOMAIN_NAME"], invitee_id)
         try:
             services.send_rsvp_confirmation_email(
-                cfg, invitee["email"], url, invitee["lookup_phrase"], status, guest_list, comments
+                cfg, email, url, invitee["lookup_phrase"], status, guest_list, comments
             )
         except Exception:
             current_app.logger.exception("SES send failed")
@@ -194,7 +195,7 @@ def self_register_submit():
     # the status/notes/guests given at signup, same call the guest's
     # own edit link would make later, including the usual
     # rsvp_history audit row.
-    db.update_rsvp(invitee_id, status, guests.serialize_guests(guest_list), comments)
+    db.update_rsvp(invitee_id, status, guests.serialize_guests(guest_list), comments, email)
 
     url = services.invite_url(cfg["DOMAIN_NAME"], invitee_id)
     qr_data_uri = "data:image/png;base64," + base64.b64encode(

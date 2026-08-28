@@ -122,7 +122,7 @@ def test_self_register_creates_invitee_with_origin_self(client, app):
     mock_phrases.insert_with_unique_phrase.assert_called_once_with(
         mock_db.insert_self_invitee, "Alice Example", "", 0
     )
-    mock_db.update_rsvp.assert_called_once_with(fake_id, "Attending", "[]", "")
+    mock_db.update_rsvp.assert_called_once_with(fake_id, "Attending", "[]", "", "")
     assert b"apple-sky-boat" in resp.data
     assert b"data:image/png;base64," in resp.data
     assert b"attending" in resp.data.lower()
@@ -168,7 +168,7 @@ def test_self_register_records_notes_and_declined_status(client, app):
         )
 
     assert resp.status_code == 200
-    mock_db.update_rsvp.assert_called_once_with(fake_id, "Declined", "[]", "Can't make it, sorry!")
+    mock_db.update_rsvp.assert_called_once_with(fake_id, "Declined", "[]", "Can't make it, sorry!", "")
     assert b"declining" in resp.data.lower()
 
 
@@ -195,7 +195,7 @@ def test_self_register_truncates_comments(client, app):
         )
 
     args, _ = mock_db.update_rsvp.call_args
-    assert len(args[-1]) == 2000
+    assert len(args[3]) == 2000
 
 
 def test_self_register_guests_ignored_when_multiple_guests_disabled(client, app):
@@ -257,6 +257,7 @@ def test_self_register_records_guests_when_multiple_guests_enabled(client, app):
         fake_id,
         "Attending",
         '[{"name": "Bob Smith", "child": true}, {"name": "Sue Smith", "child": false}]',
+        "",
         "",
     )
     assert b"Bob Smith (child), Sue Smith" in resp.data

@@ -15,7 +15,7 @@ from flask import (
     url_for,
 )
 
-from . import auth, db, phrases, services
+from . import auth, db, guests, phrases, services
 
 bp = Blueprint("admin", __name__, url_prefix="/admin")
 
@@ -122,6 +122,9 @@ def edit_invitee_form(invitee_id):
     return render_template("admin_edit.html", invitee=invitee)
 
 
+ADMIN_VALID_STATUSES = {"Pending", "Attending", "Declined"}  # unlike the guest form, admin can also reset to Pending
+
+
 @bp.post("/edit/<invitee_id>")
 @auth.login_required
 def edit_invitee_submit(invitee_id):
@@ -135,15 +138,26 @@ def edit_invitee_submit(invitee_id):
         flash("Name is required.")
         return redirect(url_for("admin.edit_invitee_form", invitee_id=invitee_id))
 
+    status = request.form.get("rsvp_status", "")
+    if status not in ADMIN_VALID_STATUSES:
+        flash("Invalid RSVP status.")
+        return redirect(url_for("admin.edit_invitee_form", invitee_id=invitee_id))
+
     email = (request.form.get("email") or "").strip()
     try:
         max_guests = int((request.form.get("max_guests") or "0").strip() or 0)
     except ValueError:
         max_guests = 0
+    comments = request.form.get("comments", "").strip()[:2000]
+    guest_list = guests.guest_rows_from_form(request.form, max_guests)
 
     if not db.update_invitee(parsed, name, email, max_guests):
         flash("Guest not found.")
         return redirect(url_for("admin.dashboard"))
+    # Reuses the same function submit_rsvp calls for a guest's own
+    # edit, so an admin-made change gets the usual rsvp_history audit
+    # row too, same as any other status change.
+    db.update_rsvp(parsed, status, guests.serialize_guests(guest_list), comments, email)
 
     flash(f"Updated {name}.")
     return redirect(url_for("admin.dashboard"))

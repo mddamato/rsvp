@@ -15,6 +15,44 @@
   <input type="email" id="email" name="email" value="{{ invitee.email or '' }}">
   <label for="max_guests">Max guests</label>
   <input type="number" id="max_guests" name="max_guests" min="0" value="{{ invitee.max_guests }}">
+
+  <fieldset class="choice-row">
+    <legend>RSVP status</legend>
+    <label class="choice">
+      <input type="radio" name="rsvp_status" value="Pending" {% if invitee.rsvp_status == 'Pending' %}checked{% endif %}>
+      <span>Pending</span>
+    </label>
+    <label class="choice">
+      <input type="radio" name="rsvp_status" value="Attending" {% if invitee.rsvp_status == 'Attending' %}checked{% endif %}>
+      <span>Attending</span>
+    </label>
+    <label class="choice">
+      <input type="radio" name="rsvp_status" value="Declined" {% if invitee.rsvp_status == 'Declined' %}checked{% endif %}>
+      <span>Declined</span>
+    </label>
+  </fieldset>
+
+  {% if invitee.max_guests > 0 %}
+  {% set existing = invitee.plus_one_details | parse_guests %}
+  <div class="guest-rows">
+    <label>Guests (up to {{ invitee.max_guests }}) -- increasing "Max guests" above needs a save before new slots show up here</label>
+    {% for i in range(1, invitee.max_guests + 1) %}
+    {% set g = existing[i - 1] if i - 1 < existing|length else None %}
+    <div class="guest-row">
+      <input type="text" name="guest_name_{{ i }}" placeholder="Guest name" value="{{ g.name if g else '' }}">
+      <label class="guest-child">
+        <input type="checkbox" name="guest_child_{{ i }}" {% if g and g.child %}checked{% endif %}>
+        Child (6 or under)
+      </label>
+    </div>
+    {% endfor %}
+    <button type="button" class="link-button add-guest">+ Add another guest</button>
+  </div>
+  {% endif %}
+
+  <label for="comments">Notes</label>
+  <textarea id="comments" name="comments" rows="3">{{ invitee.comments or '' }}</textarea>
+
   <button type="submit" data-once>Save</button>
 </form>
 <a href="/admin/dashboard">Cancel</a>

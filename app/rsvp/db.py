@@ -108,8 +108,12 @@ def dashboard_counts():
         }
 
 
-def update_rsvp(invitee_id, status, plus_one_details, comments):
-    """Update an RSVP and write an audit row in one transaction."""
+def update_rsvp(invitee_id, status, plus_one_details, comments, email):
+    """Update an RSVP (and the contact email alongside it) and write an
+    audit row in one transaction. email is required, not optional --
+    every caller already has a current value in hand (the guest's own
+    submission, or an admin edit), so there's no "leave it alone"
+    sentinel to design around."""
     with get_conn() as conn, conn.cursor() as cur:
         cur.execute(
             "SELECT rsvp_status FROM invitees WHERE id = %s FOR UPDATE",
@@ -122,10 +126,10 @@ def update_rsvp(invitee_id, status, plus_one_details, comments):
         cur.execute(
             """
             UPDATE invitees
-               SET rsvp_status = %s, plus_one_details = %s, comments = %s
+               SET rsvp_status = %s, plus_one_details = %s, comments = %s, email = %s
              WHERE id = %s
             """,
-            (status, plus_one_details, comments, invitee_id),
+            (status, plus_one_details, comments, email or None, invitee_id),
         )
         cur.execute(
             """

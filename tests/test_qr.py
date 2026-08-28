@@ -46,6 +46,25 @@ def test_landing_with_valid_code_renders_form(client):
         resp = client.get(f"/?code={invitee['id']}")
     assert resp.status_code == 200
     assert b"Alice Example" in resp.data
+    assert b'name="email"' in resp.data
+
+
+def test_rsvp_form_prefills_existing_email(client):
+    invitee = {
+        "id": uuid.uuid4(),
+        "primary_name": "Alice Example",
+        "rsvp_status": "Pending",
+        "max_guests": 0,
+        "plus_one_details": None,
+        "comments": None,
+        "lookup_phrase": "apple-sky-boat",
+        "email": "alice@example.com",
+    }
+    with patch("rsvp.routes_public.db") as mock_db:
+        mock_db.fetch_invitee_by_id.return_value = invitee
+        resp = client.get(f"/?code={invitee['id']}")
+    assert resp.status_code == 200
+    assert b'value="alice@example.com"' in resp.data
 
 
 def test_phrase_lookup_normalizes_input(client):

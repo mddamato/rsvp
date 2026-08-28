@@ -311,9 +311,11 @@ and nothing else ever sends email:
   admin-added or self-registered — submits or changes their answer
   via their personal link): a confirmation stating their current
   status (Attending/Declining), guests brought, and their note, if
-  any. Sent every time, not just on change. Only if the invitee has
-  an email on file — added by an admin, they won't unless the admin
-  set one.
+  any. Sent every time, not just on change. Only if an email was
+  submitted with the request — the RSVP form has its own editable
+  email field (pre-filled if one's already on file), so an admin-added
+  guest with no email can add one themselves and get confirmed
+  immediately, not just on some later visit.
 - **Self-registration** (`POST /self-register`): a welcome email with
   their new link/phrase and the status they just chose. Only if they
   filled in the optional email field.
@@ -337,6 +339,15 @@ to the guest or allowed to break the RSVP/registration itself.
 CSV with a header row, columns `primary_name,email,max_guests`. Upload
 from `/admin/dashboard`. UUIDs and passcodes generate automatically,
 with collision retry. Print cards from the per-guest "View card" link.
+
+The per-guest "Edit" page covers everything except the passcode
+itself (fixed once created, to avoid invalidating a printed card):
+name, email, max guests, RSVP status (including resetting to
+Pending, which the guest's own form doesn't offer), the per-guest
+list, and notes. Increasing "Max guests" needs a save before the new
+guest-name slots show up — same one-extra-step as the guest-facing
+form. Saving here never sends an email; only the guest's own
+submission does.
 
 ## Notes
 
