@@ -29,10 +29,16 @@ def create_app(test_config=None):
     if test_config:
         app.config.update(test_config)
 
-    from . import guests, routes_public, routes_admin
+    from . import guests, routes_public, routes_admin, services
 
     app.register_blueprint(routes_public.bp)
     app.register_blueprint(routes_admin.bp)
     app.jinja_env.filters["parse_guests"] = guests.parse_guests
+
+    # Computed once (not per-request) and injected into every template
+    # automatically, so base.html can build a working /event-image URL
+    # without every render_template() call needing to pass it explicitly.
+    image_token = services.event_image_token(app.config["SECRET_KEY"])
+    app.context_processor(lambda: {"event_image_token": image_token})
 
     return app

@@ -27,7 +27,13 @@ that for longer instructions (parking, directions, dress code, etc),
 and an optional closing signature (e.g. "- The Smith Family") rendered
 near the bottom of the page, below the form. Only `EVENT_TITLE` has a
 default ("Our Celebration"); the rest are hidden if left unset. Admin
-pages don't show any of this.
+pages don't show any of this, and neither does the passcode entry
+page itself (`phrase_entry.html`) — that page is reachable by anyone,
+before they've proven they know a valid passcode or link, so
+`EVENT_SUBHEADING`, `EVENT_DETAILS`, and `EVENT_DETAILS_IMAGE` only
+render on pages reached *after* a match (the RSVP form,
+self-registration). `EVENT_TITLE` and `EVENT_CLOSING` still show on
+the passcode page — they're not treated as sensitive.
 
 `EVENT_DETAILS_IMAGE` adds an invitation image right below
 `EVENT_DETAILS`, same visibility rule. Set it to a filename (not a
@@ -37,7 +43,12 @@ server-side (capped at 1200px wide, aspect ratio kept) the first time
 it's requested so mobile guests aren't stuck downloading a
 multi-megabyte original, then cached in memory for the process
 lifetime — replacing the file on disk needs a
-`sudo systemctl restart rsvp-app.service` to pick up.
+`sudo systemctl restart rsvp-app.service` to pick up. The image URL
+itself requires a token that's only ever embedded on a page reached
+by knowing a valid passcode/link/self-register phrase (derived from
+`SECRET_KEY`, not per-guest or time-limited — same bearer-token model
+as the personal RSVP link) — a bot scanning the site cold can't fetch
+it without that.
 
 ## Anonymous self-registration
 

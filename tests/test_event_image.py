@@ -1,3 +1,4 @@
+import re
 from unittest.mock import patch
 
 from PIL import Image
@@ -37,15 +38,37 @@ def test_event_image_bytes_caches_across_calls(tmp_path):
     assert first == second
 
 
-def test_event_image_route_404s_when_unconfigured(client):
-    resp = client.get("/event-image")
+def _token(app):
+    return services.event_image_token(app.config["SECRET_KEY"])
+
+
+def test_event_image_route_404s_when_unconfigured(client, app):
+    resp = client.get(f"/event-image?t={_token(app)}")
+    assert resp.status_code == 404
+
+
+def test_event_image_route_404s_without_token(client, app, tmp_path):
+    # The core protection: no token at all -- as a blind bot scanning
+    # the site would send -- must not serve the image.
+    _make_png(tmp_path / "invite.png", 400, 300)
+    app.config["EVENT_DETAILS_IMAGE"] = "invite.png"
+    with patch("rsvp.routes_public.ASSETS_DIR", str(tmp_path)):
+        resp = client.get("/event-image")
+    assert resp.status_code == 404
+
+
+def test_event_image_route_404s_with_wrong_token(client, app, tmp_path):
+    _make_png(tmp_path / "invite.png", 400, 300)
+    app.config["EVENT_DETAILS_IMAGE"] = "invite.png"
+    with patch("rsvp.routes_public.ASSETS_DIR", str(tmp_path)):
+        resp = client.get("/event-image?t=not-the-right-token")
     assert resp.status_code == 404
 
 
 def test_event_image_route_404s_when_file_missing(client, app, tmp_path):
     app.config["EVENT_DETAILS_IMAGE"] = "missing.png"
     with patch("rsvp.routes_public.ASSETS_DIR", str(tmp_path)):
-        resp = client.get("/event-image")
+        resp = client.get(f"/event-image?t={_token(app)}")
     assert resp.status_code == 404
 
 
@@ -53,7 +76,7 @@ def test_event_image_route_serves_resized_image(client, app, tmp_path):
     _make_png(tmp_path / "invite.png", 2000, 1000)
     app.config["EVENT_DETAILS_IMAGE"] = "invite.png"
     with patch("rsvp.routes_public.ASSETS_DIR", str(tmp_path)):
-        resp = client.get("/event-image")
+        resp = client.get(f"/event-image?t={_token(app)}")
     assert resp.status_code == 200
     assert resp.mimetype == "image/png"
     assert resp.headers["Cache-Control"] == "public, max-age=86400"
@@ -64,7 +87,7 @@ def test_event_image_route_serves_resized_image(client, app, tmp_path):
 def test_event_image_route_ignores_directory_traversal(client, app, tmp_path):
     app.config["EVENT_DETAILS_IMAGE"] = "../../etc/passwd"
     with patch("rsvp.routes_public.ASSETS_DIR", str(tmp_path)):
-        resp = client.get("/event-image")
+        resp = client.get(f"/event-image?t={_token(app)}")
     assert resp.status_code == 404
 
 
@@ -84,10 +107,12 @@ def test_phrase_entry_page_hides_subheading_and_details(client, app):
     assert b"123 Secret Ave, Anytown" not in resp.data
 
 
-def test_rsvp_form_still_shows_image_subheading_and_details(client, app):
+def test_rsvp_form_still_shows_image_subheading_and_details(client, app, tmp_path):
     # Once a visitor has proven they know a valid code/phrase, the
     # full event info is fine to show -- only the pre-auth passcode
-    # page suppresses it.
+    # page suppresses it. Also proves the URL base.html embeds here
+    # actually works (not just that some <img> tag is present).
+    _make_png(tmp_path / "invite.png", 400, 300)
     invitee = {
         "id": "5f0c9c1e-0000-0000-0000-000000000000",
         "primary_name": "Alice Example",
@@ -107,6 +132,21 @@ def test_rsvp_form_still_shows_image_subheading_and_details(client, app):
     assert b'class="event-image"' in resp.data
     assert b"Saturday, June 5, 2027" in resp.data
     assert b"123 Secret Ave, Anytown" in resp.data
+
+    src = re.search(rb'class="event-image" src="([^"]+)"', resp.data).group(1).decode()
+    with patch("rsvp.routes_public.ASSETS_DIR", str(tmp_path)):
+        image_resp = client.get(src)
+    assert image_resp.status_code == 200
+
+
+def test_blind_request_to_event_image_path_gets_nothing(client, app, tmp_path):
+    # Simulates a bot that has never seen any authenticated page and
+    # is just guessing well-known-looking paths.
+    _make_png(tmp_path / "invite.png", 400, 300)
+    app.config["EVENT_DETAILS_IMAGE"] = "invite.png"
+    with patch("rsvp.routes_public.ASSETS_DIR", str(tmp_path)):
+        resp = client.get("/event-image")
+    assert resp.status_code == 404
 
 
 def test_guest_pages_hide_image_when_unconfigured(client):

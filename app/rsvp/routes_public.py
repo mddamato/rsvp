@@ -1,5 +1,6 @@
 """Public guest-facing routes."""
 import base64
+import hmac
 import os
 import re
 import uuid
@@ -204,10 +205,17 @@ def event_image():
     """The optional invitation image configured via EVENT_DETAILS_IMAGE
     (a filename inside config/assets/, mounted read-only at
     ASSETS_DIR), resized once and cached for the process lifetime.
-    404s if unconfigured, missing, or unreadable -- same as any other
-    optional guest-facing element in this app."""
+    404s if unconfigured, missing, unreadable, or requested without
+    the token base.html only ever embeds on a page the visitor reached
+    by already knowing a valid passcode/link/self-register phrase --
+    without it, this endpoint would otherwise leak EVENT_DETAILS_IMAGE
+    to blind requests even though the passcode page itself never
+    references it."""
     filename = current_app.config.get("EVENT_DETAILS_IMAGE", "")
     if not filename:
+        return Response(status=404)
+    expected_token = services.event_image_token(current_app.config["SECRET_KEY"])
+    if not hmac.compare_digest(request.args.get("t", ""), expected_token):
         return Response(status=404)
     path = os.path.join(ASSETS_DIR, os.path.basename(filename))
     try:

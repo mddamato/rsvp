@@ -1,4 +1,6 @@
 """QR code generation (in memory, never touches disk) and SES email."""
+import hashlib
+import hmac
 import io
 
 import qrcode
@@ -7,6 +9,18 @@ from PIL import Image
 EVENT_IMAGE_MAX_WIDTH = 1200  # plenty sharp at the card's ~34rem display width, even on 2x displays
 
 _event_image_cache = {}
+
+
+def event_image_token(secret_key):
+    """Short token proving a request for /event-image originated from
+    a page the visitor could only reach by already knowing a valid
+    passcode/link (or the self-registration phrase) -- the same
+    bearer-token model as the personal RSVP link itself, applied to
+    the image URL too, so a bot scanning the site blind can't fetch it
+    without ever supplying a passcode. Derived from SECRET_KEY (not
+    per-guest, not time-limited) so every gunicorn worker process
+    computes the identical value with no shared state needed."""
+    return hmac.new(secret_key.encode(), b"event-image", hashlib.sha256).hexdigest()[:16]
 
 
 def qr_png_bytes(url):
