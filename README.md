@@ -1,8 +1,8 @@
 # RSVP App
 
-Self-hosted event RSVP system. Guests scan a QR code or type a 3-word
+Self-hosted vibe-coded event RSVP system. Guests scan a QR code or type a 3-word
 passcode from their printed invitation. Flask + PostgreSQL + Nginx on a
-single EC2 instance via Docker Compose. No frontend framework.
+single EC2 instance via Docker Compose. No frontend framework to be mobile friendly. Ideally uses Cloudflare origin certificates with mTLS backend.
 
 ## Layout
 
