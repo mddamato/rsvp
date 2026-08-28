@@ -7,7 +7,8 @@ single EC2 instance via Docker Compose. No frontend framework.
 ## Layout
 
 ```
-config/          central config: .env (values), nginx template, htpasswd
+config/          central config: .env (values), nginx template, htpasswd,
+                 assets/ (non-secret files like an invitation image)
 app/             Flask application, schema, EFF wordlist, Dockerfile
 backup/          nightly pg_dump-to-S3 sidecar
 scripts/         Let's Encrypt bootstrap, cron example, admin creation,
@@ -27,6 +28,16 @@ and an optional closing signature (e.g. "- The Smith Family") rendered
 near the bottom of the page, below the form. Only `EVENT_TITLE` has a
 default ("Our Celebration"); the rest are hidden if left unset. Admin
 pages don't show any of this.
+
+`EVENT_DETAILS_IMAGE` adds an invitation image right below
+`EVENT_DETAILS`, same visibility rule. Set it to a filename (not a
+path) and place the actual file in `config/assets/` — see "Non-secret
+config assets" below for how that gets onto the server. Resized
+server-side (capped at 1200px wide, aspect ratio kept) the first time
+it's requested so mobile guests aren't stuck downloading a
+multi-megabyte original, then cached in memory for the process
+lifetime — replacing the file on disk needs a
+`sudo systemctl restart rsvp-app.service` to pick up.
 
 ## Anonymous self-registration
 
@@ -129,7 +140,11 @@ Secrets (`config/.env`, `config/htpasswd`, and the Cloudflare cert/key
 if used) never go through git or the AMI. They're pushed to AWS
 Secrets Manager from a laptop and pulled onto the instance by a
 systemd unit on every app start, so a pushed update takes effect on
-the next restart or reboot with no manual file copying.
+the next restart or reboot with no manual file copying. Non-secret
+config files that are too large for Secrets Manager (e.g. an
+invitation image — Secrets Manager caps a value at 64KB) follow the
+same pull-on-start pattern but through S3 instead — see "Non-secret
+config assets" below.
 
 1. `cd infra && tofu init && tofu apply -var backup_bucket_name=YOUR-BUCKET`
    (optionally add `-var vpc_id=YOUR-VPC -var subnet_id=YOUR-SUBNET` to
@@ -167,6 +182,26 @@ the next restart or reboot with no manual file copying.
    `./scripts/init-letsencrypt.sh` once (needs DNS live first), then
    install the renewal cron — see `scripts/crontab.example`. Using
    Cloudflare TLS mode instead, see below; no certbot step needed.
+
+### Non-secret config assets
+
+Files that don't belong in git but also aren't secrets — currently
+just the optional `EVENT_DETAILS_IMAGE` invitation image — go in
+`config/assets/` and are pushed to the same S3 bucket used for
+backups, under an `assets/` prefix the instance role can only read
+(not the timestamped backup dumps at the bucket root):
+
+```bash
+aws s3 sync config/assets/ s3://YOUR-BUCKET/assets/
+sudo systemctl restart rsvp-app.service   # picks it up, same as a pushed secret
+```
+
+`aws s3 sync ... --delete` on the push side removes a file from the
+server the next time it starts if you also delete it locally first.
+Pulled by the same `rsvp-secrets` systemd unit as the Secrets Manager
+values (`scripts/fetch-assets.sh`, run right after
+`scripts/fetch-secrets.sh` since it reads `BACKUP_S3_BUCKET` out of
+the `config/.env` that step just wrote).
 
 ### Redeploying after a code change
 

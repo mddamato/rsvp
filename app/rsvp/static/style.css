@@ -93,6 +93,14 @@ body {
   font-size: 0.92rem;
 }
 
+.event-image {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: var(--space) auto 0;
+  border-radius: calc(var(--radius) * 0.6);
+}
+
 .lede { text-align: center; margin: 0 0 var(--space); }
 
 form { display: flex; flex-direction: column; gap: 0.5rem; }

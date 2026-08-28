@@ -224,6 +224,10 @@ config/.env
 #config/htpasswd
 config/cloudflare_origin_server.crt
 config/cloudflare_origin_server.key
+# Non-secret config assets (e.g. invitation images) pulled from S3,
+# not committed. Keep the directory itself tracked via .gitkeep.
+config/assets/*
+!config/assets/.gitkeep
 __pycache__/
 *.pyc
 .pytest_cache/

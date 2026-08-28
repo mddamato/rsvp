@@ -17,6 +17,7 @@ def create_app(test_config=None):
         EVENT_SUBHEADING=os.environ.get("EVENT_SUBHEADING", ""),
         EVENT_DETAILS=os.environ.get("EVENT_DETAILS", ""),
         EVENT_CLOSING=os.environ.get("EVENT_CLOSING", ""),
+        EVENT_DETAILS_IMAGE=os.environ.get("EVENT_DETAILS_IMAGE", ""),
         ANONYMOUS_PHRASE=os.environ.get("ANONYMOUS_PHRASE", ""),
         SELF_REGISTER_MULTIPLE_GUESTS=os.environ.get("SELF_REGISTER_MULTIPLE_GUESTS", "0") == "1",
         SESSION_COOKIE_SECURE=os.environ.get("FLASK_DEBUG") != "1",

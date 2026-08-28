@@ -25,6 +25,7 @@ services:
       - ./config/.env
     volumes:
       - ./config/htpasswd:/etc/rsvp/.htpasswd:ro
+      - ./config/assets:/etc/rsvp/assets:ro
     depends_on:
       postgres:
         condition: service_healthy

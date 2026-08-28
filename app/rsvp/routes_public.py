@@ -1,10 +1,12 @@
 """Public guest-facing routes."""
 import base64
+import os
 import re
 import uuid
 
 from flask import (
     Blueprint,
+    Response,
     current_app,
     redirect,
     render_template,
@@ -20,6 +22,7 @@ VALID_STATUSES = {"Attending", "Declined"}
 PHRASE_RE = re.compile(r"^[a-z]+-[a-z]+-[a-z]+$")
 MAX_SELF_REGISTER_NAME_LEN = 200
 MAX_SELF_REGISTER_GUESTS = 20  # sanity cap on public input, not a security boundary
+ASSETS_DIR = "/etc/rsvp/assets"  # mounted read-only from config/assets/, see docker-compose.yml
 
 
 def _honeypot_tripped(form):
@@ -181,6 +184,26 @@ def self_register_submit():
 @bp.get("/thanks")
 def thanks():
     return render_template("thanks.html")
+
+
+@bp.get("/event-image")
+def event_image():
+    """The optional invitation image configured via EVENT_DETAILS_IMAGE
+    (a filename inside config/assets/, mounted read-only at
+    ASSETS_DIR), resized once and cached for the process lifetime.
+    404s if unconfigured, missing, or unreadable -- same as any other
+    optional guest-facing element in this app."""
+    filename = current_app.config.get("EVENT_DETAILS_IMAGE", "")
+    if not filename:
+        return Response(status=404)
+    path = os.path.join(ASSETS_DIR, os.path.basename(filename))
+    try:
+        data, mimetype = services.event_image_bytes(path)
+    except OSError:
+        return Response(status=404)
+    resp = Response(data, mimetype=mimetype)
+    resp.headers["Cache-Control"] = "public, max-age=86400"
+    return resp
 
 
 @bp.get("/recover")

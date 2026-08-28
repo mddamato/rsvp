@@ -164,6 +164,27 @@ resource "aws_iam_role_policy" "ses_and_backup" {
         Resource = "${aws_s3_bucket.backups.arn}/*"
       },
       {
+        # Non-secret config assets (e.g. an invitation image) pushed
+        # from a laptop with `aws s3 sync config/assets/
+        # s3://.../assets/` and pulled by fetch-assets.sh on every app
+        # start, the same bucket as backups but a separate prefix, and
+        # explicitly not the broader read access that would come from
+        # just reusing the WriteBackupsOnly statement's resource.
+        Sid      = "ListAssetsPrefix"
+        Effect   = "Allow"
+        Action   = ["s3:ListBucket"]
+        Resource = aws_s3_bucket.backups.arn
+        Condition = {
+          StringLike = { "s3:prefix" = ["assets/*"] }
+        }
+      },
+      {
+        Sid      = "ReadAssets"
+        Effect   = "Allow"
+        Action   = ["s3:GetObject"]
+        Resource = "${aws_s3_bucket.backups.arn}/assets/*"
+      },
+      {
         Sid    = "ReadAppSecrets"
         Effect = "Allow"
         Action = ["secretsmanager:GetSecretValue"]
@@ -225,13 +246,17 @@ resource "aws_instance" "rsvp" {
 
     cat > /etc/systemd/system/rsvp-secrets.service <<'UNIT'
     [Unit]
-    Description=Fetch RSVP app secrets from Secrets Manager
+    Description=Fetch RSVP app secrets and config assets
 
     [Service]
     Type=oneshot
     Environment=AWS_DEFAULT_REGION=${var.aws_region}
     WorkingDirectory=/opt/rsvp-app
+    # Two ExecStart lines run in sequence for a oneshot unit. Secrets
+    # first: fetch-assets.sh reads BACKUP_S3_BUCKET out of the
+    # config/.env that fetch-secrets.sh just wrote.
     ExecStart=/opt/rsvp-app/scripts/fetch-secrets.sh
+    ExecStart=/opt/rsvp-app/scripts/fetch-assets.sh
     UNIT
 
     cat > /etc/systemd/system/rsvp-app.service <<'UNIT'

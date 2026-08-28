@@ -2,6 +2,11 @@
 import io
 
 import qrcode
+from PIL import Image
+
+EVENT_IMAGE_MAX_WIDTH = 1200  # plenty sharp at the card's ~34rem display width, even on 2x displays
+
+_event_image_cache = {}
 
 
 def qr_png_bytes(url):
@@ -16,6 +21,33 @@ def qr_png_bytes(url):
 
 def invite_url(domain, invitee_id):
     return f"https://{domain}/?code={invitee_id}"
+
+
+def event_image_bytes(path, max_width=EVENT_IMAGE_MAX_WIDTH):
+    """Read, downsize if needed, and return (bytes, mimetype) for the
+    configured invitation image. Resized once and cached in memory for
+    the process lifetime -- the source file doesn't change without an
+    app restart, same as any other config change. Raises OSError (via
+    Image.open) if the file is missing or unreadable; callers turn
+    that into a 404."""
+    if path in _event_image_cache:
+        return _event_image_cache[path]
+
+    with Image.open(path) as img:
+        img.load()
+        fmt = img.format
+        if img.width > max_width:
+            ratio = max_width / img.width
+            img = img.resize((max_width, round(img.height * ratio)), Image.LANCZOS)
+        buf = io.BytesIO()
+        save_kwargs = {"optimize": True}
+        if fmt == "JPEG":
+            save_kwargs["quality"] = 85
+        img.save(buf, format=fmt, **save_kwargs)
+        result = (buf.getvalue(), Image.MIME.get(fmt, "application/octet-stream"))
+
+    _event_image_cache[path] = result
+    return result
 
 
 def send_recovery_email(region, sender, recipient, url, phrase):
