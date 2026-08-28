@@ -17,8 +17,22 @@ cd "$(dirname "$0")/.."
 # (no network yet at boot, GitHub unreachable) is logged and skipped
 # rather than aborting the whole start, so a transient network hiccup
 # can't take the app down entirely.
+#
+# config/htpasswd is tracked in git but is actually owned by
+# rsvp-secrets.service (fetch-secrets.sh), which just wrote it fresh
+# from AWS Secrets Manager immediately before this script runs --
+# rsvp-secrets.service is a plain oneshot with no RemainAfterExit, so
+# Requires=rsvp-secrets.service reruns it on every start, not just at
+# boot. A plain `reset --hard` would blow that away and silently
+# revert to whatever stale htpasswd happens to be committed, locking
+# out any admin account that only exists in Secrets Manager. Preserve
+# whatever's already on disk across the reset instead.
 if git fetch --quiet origin main; then
+  cp config/htpasswd /tmp/rsvp-up-htpasswd.bak 2>/dev/null || true
   git reset --hard origin/main
+  if [ -f /tmp/rsvp-up-htpasswd.bak ]; then
+    mv /tmp/rsvp-up-htpasswd.bak config/htpasswd
+  fi
 else
   echo "rsvp-up: git fetch failed, continuing with the code already on disk" >&2
 fi
