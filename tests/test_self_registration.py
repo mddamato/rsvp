@@ -430,3 +430,49 @@ def test_admin_dashboard_shows_qr_thumbnail_and_phrase(client, app):
     assert resp.status_code == 200
     assert b"apple-sky-boat" in resp.data
     assert f'src="/admin/qr/{row["id"]}"'.encode() in resp.data
+    assert b"<summary>Show QR</summary>" in resp.data
+
+
+def test_register_landing_renders_self_register_form(client, app):
+    app.config["ANONYMOUS_PHRASE"] = "Tonys third birthday"
+    with patch("rsvp.routes_public.db") as mock_db:
+        resp = client.get("/register")
+    assert resp.status_code == 200
+    assert b'name="primary_name"' in resp.data
+    mock_db.fetch_invitee_by_phrase.assert_not_called()
+
+
+def test_register_landing_disabled_by_default(client):
+    resp = client.get("/register")
+    assert resp.status_code == 302
+
+
+def test_dashboard_shows_self_register_qr_section_when_enabled(client, app):
+    app.config["ANONYMOUS_PHRASE"] = "Tonys third birthday"
+    _login(client, app)
+    counts = {
+        "total": 0, "attending": 0, "declined": 0, "pending": 0,
+        "with_comments": 0, "self_registered": 0, "pending_review": 0,
+    }
+    with patch("rsvp.routes_admin.db") as mock_db:
+        mock_db.fetch_all_invitees.return_value = []
+        mock_db.dashboard_counts.return_value = counts
+        resp = client.get("/admin/dashboard")
+    assert resp.status_code == 200
+    assert b"Self-registration QR code" in resp.data
+    assert b"Tonys third birthday" in resp.data
+    assert b'src="/admin/register-qr"' in resp.data
+
+
+def test_dashboard_hides_self_register_qr_section_when_disabled(client, app):
+    _login(client, app)
+    counts = {
+        "total": 0, "attending": 0, "declined": 0, "pending": 0,
+        "with_comments": 0, "self_registered": 0, "pending_review": 0,
+    }
+    with patch("rsvp.routes_admin.db") as mock_db:
+        mock_db.fetch_all_invitees.return_value = []
+        mock_db.dashboard_counts.return_value = counts
+        resp = client.get("/admin/dashboard")
+    assert resp.status_code == 200
+    assert b"Self-registration QR code" not in resp.data

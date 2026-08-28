@@ -55,6 +55,19 @@ def landing():
     return render_template("phrase_entry.html", error=None)
 
 
+@bp.get("/register")
+def register_landing():
+    """Direct entry point for the self-registration QR code (see
+    admin.register_qr/admin.register_card) -- skips the phrase-entry
+    step entirely, for handing out to anonymous people who have no
+    3-word phrase to type. Same defense-in-depth as
+    self_register_submit: nothing useful to show if the feature is
+    off."""
+    if not current_app.config.get("ANONYMOUS_PHRASE"):
+        return redirect(url_for("public.landing"))
+    return render_template("self_register.html", error=None)
+
+
 @bp.post("/")
 def phrase_lookup():
     """Tier 2: guest types their 3-word phrase."""

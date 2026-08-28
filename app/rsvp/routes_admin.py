@@ -208,3 +208,22 @@ def qr_image(invitee_id):
     url = services.invite_url(current_app.config["DOMAIN_NAME"], parsed)
     png = services.qr_png_bytes(url)
     return Response(png, mimetype="image/png")
+
+
+@bp.get("/register-qr")
+@auth.login_required
+def register_qr():
+    """QR code PNG for the direct self-registration entry point
+    (public.register_landing) -- for handing out to anonymous people,
+    no 3-word phrase needed."""
+    url = f"https://{current_app.config['DOMAIN_NAME']}/register"
+    png = services.qr_png_bytes(url)
+    return Response(png, mimetype="image/png")
+
+
+@bp.get("/register-card")
+@auth.login_required
+def register_card():
+    """Print-ready view of the self-registration QR code."""
+    url = f"https://{current_app.config['DOMAIN_NAME']}/register"
+    return render_template("admin_register_card.html", url=url)

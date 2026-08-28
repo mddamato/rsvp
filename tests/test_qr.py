@@ -53,3 +53,30 @@ def test_phrase_lookup_normalizes_input(client):
         mock_db.fetch_invitee_by_phrase.return_value = None
         client.post("/", data={"phrase": "  Apple Sky Boat "})
     mock_db.fetch_invitee_by_phrase.assert_called_once_with("apple-sky-boat")
+
+
+def test_register_qr_returns_png(client, app):
+    _login(client, app)
+    resp = client.get("/admin/register-qr")
+    assert resp.status_code == 200
+    assert resp.mimetype == "image/png"
+    assert resp.data[:8] == b"\x89PNG\r\n\x1a\n"
+
+
+def test_register_qr_requires_login(client):
+    resp = client.get("/admin/register-qr")
+    assert resp.status_code == 302
+
+
+def test_register_card_requires_login(client):
+    resp = client.get("/admin/register-card")
+    assert resp.status_code == 302
+
+
+def test_register_card_shows_phrase(client, app):
+    app.config["ANONYMOUS_PHRASE"] = "Tonys third birthday"
+    _login(client, app)
+    resp = client.get("/admin/register-card")
+    assert resp.status_code == 200
+    assert b"Tonys third birthday" in resp.data
+    assert b'src="/admin/register-qr"' in resp.data

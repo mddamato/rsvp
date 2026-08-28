@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block heading %}Self-registration QR code{% endblock %}
+{% block subheading %}{% endblock %}
+{% block details %}{% endblock %}
+{% block event_image %}{% endblock %}
+{% block closing %}{% endblock %}
+{% block content %}
+<div class="print-card">
+  <img src="/admin/register-qr" alt="Self-registration QR code" width="240" height="240">
+  {% if config.ANONYMOUS_PHRASE %}<p class="phrase-display">{{ config.ANONYMOUS_PHRASE }}</p>{% endif %}
+  <p class="fine-print">{{ url }}</p>
+</div>
+<p class="fine-print no-print">Anyone who scans this (or types the phrase above into the passcode box) goes straight to the self-registration form -- no personal invite needed.</p>
+<p class="fine-print no-print"><a href="/admin/dashboard">Back to dashboard</a> &middot; use your browser's print dialog to print this.</p>
+{% endblock %}

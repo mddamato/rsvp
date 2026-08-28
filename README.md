@@ -72,6 +72,14 @@ Self-registration is solo-only by default. Set
 additional guests too, using the same per-guest "Add guest" UI
 described below.
 
+Typing the phrase isn't the only way in: `/register` goes straight to
+the self-registration form, no phrase needed — for a QR code you hand
+out to people with no personal invite (a flyer, a poster, cards at a
+school). The admin dashboard shows this QR (open by default, right
+under the stat tiles, only when `ANONYMOUS_PHRASE` is set) alongside
+the phrase itself for people who'd rather type it, and links to
+`/admin/register-card` for a printable full-size version.
+
 ### Plus-one guests
 
 Guests joining an invitee (whether entered by the invitee on their
