@@ -43,13 +43,22 @@
   <button type="submit" data-once>Add</button>
 </form>
 
+<form id="bulk-form" method="post"></form>
+<div class="bulk-actions">
+  <button type="submit" form="bulk-form" formaction="/admin/bulk-confirm" class="link-button" data-once>Confirm selected</button>
+  <button type="submit" form="bulk-form" formaction="/admin/bulk-delete" class="link-button" data-once
+          onclick="return confirm('Delete the selected guests? This cannot be undone.');">Delete selected</button>
+  <button type="submit" form="bulk-form" formaction="/admin/export-csv" class="link-button" data-once>Export CSV</button>
+</div>
+
 <table class="guest-table">
   <thead>
-    <tr><th>Guest</th><th>Status</th><th>Guests</th><th>Notes</th><th>Card</th><th></th><th></th><th></th></tr>
+    <tr><th><input type="checkbox" id="select-all" aria-label="Select all guests"></th><th>Guest</th><th>Status</th><th>Guests</th><th>Notes</th><th>Card</th><th></th><th></th><th></th></tr>
   </thead>
   <tbody>
   {% for g in invitees %}
     <tr>
+      <td><input type="checkbox" name="invitee_ids" value="{{ g.id }}" form="bulk-form" aria-label="Select {{ g.primary_name }}"></td>
       <td>{{ g.primary_name }}{% if g.origin == 'self' %} <span class="fine-print">(self-registered{% if not g.reviewed %}, pending review{% endif %})</span>{% endif %}</td>
       <td>{{ g.rsvp_status }}</td>
       <td>{% for guest in g.plus_one_details | parse_guests %}{{ guest.name }}{% if guest.child %} (child){% endif %}{% if not loop.last %}, {% endif %}{% endfor %}</td>
@@ -78,7 +87,7 @@
       </td>
     </tr>
   {% else %}
-    <tr><td colspan="8">No guests yet. Upload a CSV above to get started.</td></tr>
+    <tr><td colspan="9">No guests yet. Upload a CSV above to get started.</td></tr>
   {% endfor %}
   </tbody>
 </table>

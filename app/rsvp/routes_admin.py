@@ -2,6 +2,7 @@
 import csv
 import io
 import uuid
+from datetime import date
 
 from flask import (
     Blueprint,
@@ -18,6 +19,19 @@ from flask import (
 from . import auth, db, guests, phrases, services
 
 bp = Blueprint("admin", __name__, url_prefix="/admin")
+
+
+def _parse_uuid_list(values):
+    """Parse the dashboard's checked invitee_ids into real UUIDs,
+    silently dropping anything malformed (a tampered or stale form
+    field) rather than failing the whole bulk action."""
+    result = []
+    for v in values:
+        try:
+            result.append(uuid.UUID(v))
+        except (ValueError, TypeError, AttributeError):
+            continue
+    return result
 
 
 @bp.get("/login")
@@ -194,6 +208,60 @@ def confirm_invitee(invitee_id):
     else:
         flash("Guest not found.")
     return redirect(url_for("admin.dashboard"))
+
+
+@bp.post("/bulk-confirm")
+@auth.login_required
+def bulk_confirm():
+    ids = _parse_uuid_list(request.form.getlist("invitee_ids"))
+    if not ids:
+        flash("No guests selected.")
+        return redirect(url_for("admin.dashboard"))
+    count = db.bulk_mark_reviewed(ids)
+    flash(f"Marked {count} guest(s) as reviewed.")
+    return redirect(url_for("admin.dashboard"))
+
+
+@bp.post("/bulk-delete")
+@auth.login_required
+def bulk_delete():
+    ids = _parse_uuid_list(request.form.getlist("invitee_ids"))
+    if not ids:
+        flash("No guests selected.")
+        return redirect(url_for("admin.dashboard"))
+    count = db.bulk_delete_invitees(ids)
+    flash(f"Deleted {count} guest(s).")
+    return redirect(url_for("admin.dashboard"))
+
+
+@bp.post("/export-csv")
+@auth.login_required
+def export_csv():
+    """Downloads a CSV of the selected rows, or of every guest if none
+    were checked -- so the same button works both as "export my
+    selection" and "export everything"."""
+    ids = _parse_uuid_list(request.form.getlist("invitee_ids"))
+    invitees = db.fetch_invitees_by_ids(ids) if ids else db.fetch_all_invitees()
+
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(
+        ["primary_name", "email", "rsvp_status", "max_guests", "guests",
+         "comments", "lookup_phrase", "origin", "reviewed"]
+    )
+    for g in invitees:
+        guest_names = ", ".join(
+            gu["name"] + (" (child)" if gu.get("child") else "")
+            for gu in guests.parse_guests(g["plus_one_details"])
+        )
+        writer.writerow([
+            g["primary_name"], g["email"] or "", g["rsvp_status"], g["max_guests"],
+            guest_names, g["comments"] or "", g["lookup_phrase"], g["origin"], g["reviewed"],
+        ])
+
+    resp = Response(buf.getvalue(), mimetype="text/csv")
+    resp.headers["Content-Disposition"] = f"attachment; filename=guests-{date.today().isoformat()}.csv"
+    return resp
 
 
 @bp.get("/card/<invitee_id>")

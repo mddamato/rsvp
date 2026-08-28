@@ -172,6 +172,42 @@ def mark_invitee_reviewed(invitee_id):
         return cur.rowcount > 0
 
 
+def bulk_mark_reviewed(invitee_ids):
+    """Same as mark_invitee_reviewed but for a batch of ids at once (the
+    admin dashboard's row checkboxes). Returns the number of rows
+    actually updated."""
+    if not invitee_ids:
+        return 0
+    with get_conn() as conn, conn.cursor() as cur:
+        cur.execute("UPDATE invitees SET reviewed = true WHERE id = ANY(%s)", (invitee_ids,))
+        return cur.rowcount
+
+
+def bulk_delete_invitees(invitee_ids):
+    """Same as delete_invitee but for a batch of ids at once. Returns
+    the number of rows actually deleted."""
+    if not invitee_ids:
+        return 0
+    with get_conn() as conn, conn.cursor() as cur:
+        cur.execute("DELETE FROM invitees WHERE id = ANY(%s)", (invitee_ids,))
+        return cur.rowcount
+
+
+def fetch_invitees_by_ids(invitee_ids):
+    """Fetch a specific set of invitees, e.g. for a CSV export limited
+    to the dashboard rows an admin selected."""
+    if not invitee_ids:
+        return []
+    with get_conn() as conn, conn.cursor(
+        cursor_factory=psycopg2.extras.RealDictCursor
+    ) as cur:
+        cur.execute(
+            "SELECT * FROM invitees WHERE id = ANY(%s) ORDER BY primary_name",
+            (invitee_ids,),
+        )
+        return cur.fetchall()
+
+
 def insert_invitee(primary_name, email, max_guests, lookup_phrase, origin="admin", reviewed=True):
     """Insert one invitee. Raises psycopg2.errors.UniqueViolation on a
     phrase collision so the caller can regenerate and retry."""

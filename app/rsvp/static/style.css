@@ -223,6 +223,9 @@ a { color: var(--color-accent); }
 .self-register-qr summary { cursor: pointer; font-weight: 600; }
 .self-register-qr .fine-print { margin: 0.5rem 0; }
 
+.bulk-actions { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 0.5rem; }
+.bulk-actions .link-button { padding: 0.25rem 0; }
+
 .guest-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
 .guest-table th, .guest-table td {
   text-align: left;
@@ -267,5 +270,5 @@ a { color: var(--color-accent); }
 @media (max-width: 480px) {
   .card { padding: calc(var(--space) * 1.25); }
   .choice-row { flex-direction: column; }
-  .guest-table th:nth-child(4), .guest-table td:nth-child(4) { display: none; }
+  .guest-table th:nth-child(5), .guest-table td:nth-child(5) { display: none; }
 }
