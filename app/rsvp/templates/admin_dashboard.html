@@ -44,7 +44,12 @@
       <td>{{ g.rsvp_status }}</td>
       <td>{% for guest in g.plus_one_details | parse_guests %}{{ guest.name }}{% if guest.child %} (child){% endif %}{% if not loop.last %}, {% endif %}{% endfor %}</td>
       <td>{{ g.comments or '' }}</td>
-      <td><a href="/admin/card/{{ g.id }}">View card</a></td>
+      <td>
+        <a href="/admin/card/{{ g.id }}" title="View card">
+          <img src="/admin/qr/{{ g.id }}" alt="QR code for {{ g.primary_name }}" class="dash-qr-thumb">
+        </a>
+        <span class="fine-print">{{ g.lookup_phrase }}</span>
+      </td>
       <td><a href="/admin/edit/{{ g.id }}">Edit</a></td>
       <td>
         {% if g.origin == 'self' and not g.reviewed %}

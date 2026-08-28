@@ -398,3 +398,35 @@ def test_confirm_invitee_rejects_bad_uuid(client, app):
         resp = client.post("/admin/confirm/not-a-uuid")
     assert resp.status_code == 302
     mock_db.mark_invitee_reviewed.assert_not_called()
+
+
+def test_admin_dashboard_shows_qr_thumbnail_and_phrase(client, app):
+    _login(client, app)
+    row = {
+        "id": uuid.uuid4(),
+        "primary_name": "Alice Example",
+        "rsvp_status": "Pending",
+        "max_guests": 0,
+        "plus_one_details": None,
+        "comments": None,
+        "lookup_phrase": "apple-sky-boat",
+        "email": None,
+        "origin": "admin",
+        "reviewed": True,
+    }
+    counts = {
+        "total": 1,
+        "attending": 0,
+        "declined": 0,
+        "pending": 1,
+        "with_comments": 0,
+        "self_registered": 0,
+        "pending_review": 0,
+    }
+    with patch("rsvp.routes_admin.db") as mock_db:
+        mock_db.fetch_all_invitees.return_value = [row]
+        mock_db.dashboard_counts.return_value = counts
+        resp = client.get("/admin/dashboard")
+    assert resp.status_code == 200
+    assert b"apple-sky-boat" in resp.data
+    assert f'src="/admin/qr/{row["id"]}"'.encode() in resp.data
