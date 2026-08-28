@@ -1,7 +1,7 @@
 """RSVP application factory."""
 import os
 
-from flask import Flask
+from flask import Flask, url_for
 
 
 def create_app(test_config=None):
@@ -34,6 +34,21 @@ def create_app(test_config=None):
     app.register_blueprint(routes_public.bp)
     app.register_blueprint(routes_admin.bp)
     app.jinja_env.filters["parse_guests"] = guests.parse_guests
+
+    def static_url(filename):
+        """Cache-busting static URL: appends the file's mtime as a
+        query string. Static files are re-COPY'd fresh on every deploy
+        (docker build), so this changes on every deploy that touches
+        them -- forcing browsers to fetch the new enhance.js/style.css
+        instead of serving a stale cached copy from before the deploy."""
+        path = os.path.join(app.static_folder, filename)
+        try:
+            version = int(os.path.getmtime(path))
+        except OSError:
+            version = 0
+        return f"{url_for('static', filename=filename)}?v={version}"
+
+    app.jinja_env.globals["static_url"] = static_url
 
     # Computed once (not per-request) and injected into every template
     # automatically, so a template can reference these without every

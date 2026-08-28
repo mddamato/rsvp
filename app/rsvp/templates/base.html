@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}RSVP{% endblock %}</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link rel="stylesheet" href="{{ static_url('style.css') }}">
 </head>
 <body>
   <main class="card">
@@ -18,6 +18,6 @@
     {% block content %}{% endblock %}
     {% block closing %}{% if config.EVENT_CLOSING %}<p class="event-closing">{{ config.EVENT_CLOSING }}</p>{% endif %}{% endblock %}
   </main>
-  <script src="{{ url_for('static', filename='enhance.js') }}" defer></script>
+  <script src="{{ static_url('enhance.js') }}" defer></script>
 </body>
 </html>
